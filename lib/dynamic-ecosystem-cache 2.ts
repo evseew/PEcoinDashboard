@@ -2,7 +2,7 @@
 // Автоматически получает участников из основной системы entities
 
 import { serverCache } from './server-cache'
-import { getBaseUrl } from './get-base-url'
+import { fetchTransactionHistory } from '../app/api/pecoin-history/route'
 
 interface DynamicParticipant {
   walletAddress: string
@@ -67,71 +67,64 @@ class DynamicEcosystemCache {
     
     try {
       const participants: DynamicParticipant[] = []
-      const baseUrl = getBaseUrl()
+      
+      // Получаем данные напрямую из Supabase (избегаем проблем с fetch на сервере)
+      const { supabase } = await import('@/lib/supabaseClient')
       
       // Получаем команды
-      const teamsResponse = await fetch(`${baseUrl}/api/entities/teams`)
-      if (teamsResponse.ok) {
-        const teamsData = await teamsResponse.json()
-        if (teamsData.data) {
-          teamsData.data.forEach((team: any) => {
-            if (team.walletAddress) {
-              participants.push({
-                walletAddress: team.walletAddress,
-                type: 'team',
-                name: team.name || `Team ${team.id}`,
-                id: team.id
-              })
-            }
-          })
-        }
+      const { data: teamsData } = await supabase.from('teams').select('*')
+      if (teamsData) {
+        teamsData.forEach((team: any) => {
+          if (team.wallet_address) {
+            participants.push({
+              walletAddress: team.wallet_address,
+              type: 'team',
+              name: team.name || `Team ${team.id}`,
+              id: team.id
+            })
+          }
+        })
       }
       
       // Получаем стартапы  
-      const startupsResponse = await fetch(`${baseUrl}/api/entities/startups`)
-      if (startupsResponse.ok) {
-        const startupsData = await startupsResponse.json()
-        if (startupsData.data) {
-          startupsData.data.forEach((startup: any) => {
-            if (startup.walletAddress) {
-              participants.push({
-                walletAddress: startup.walletAddress,
-                type: 'startup', 
-                name: startup.name || `Startup ${startup.id}`,
-                id: startup.id
-              })
-            }
-          })
-        }
+      const { data: startupsData } = await supabase.from('startups').select('*')
+      if (startupsData) {
+        startupsData.forEach((startup: any) => {
+          if (startup.wallet_address) {
+            participants.push({
+              walletAddress: startup.wallet_address,
+              type: 'startup', 
+              name: startup.name || `Startup ${startup.id}`,
+              id: startup.id
+            })
+          }
+        })
       }
       
       // Получаем сотрудников
-      const staffResponse = await fetch(`${baseUrl}/api/entities/staff`)
-      if (staffResponse.ok) {
-        const staffData = await staffResponse.json()
-        if (staffData.data) {
-          staffData.data.forEach((staff: any) => {
-            if (staff.walletAddress) {
-              participants.push({
-                walletAddress: staff.walletAddress,
-                type: 'staff',
-                name: staff.name || `Staff ${staff.id}`,
-                id: staff.id
-              })
-            }
-          })
-        }
+      const { data: staffData } = await supabase.from('staff').select('*')
+      if (staffData) {
+        staffData.forEach((person: any) => {
+          if (person.wallet_address) {
+            participants.push({
+              walletAddress: person.wallet_address,
+              type: 'staff',
+              name: person.name || `Staff ${person.id}`,
+              id: person.id
+            })
+          }
+        })
       }
       
       // Обновляем список участников
       this.ecosystemData.participants = participants
       this.ecosystemData.lastParticipantsRefresh = Date.now()
       
-      const teams = participants.filter(p => p.type === 'team').length
-      const startups = participants.filter(p => p.type === 'startup').length
-      const staff = participants.filter(p => p.type === 'staff').length
+      const teamsCount = participants.filter(p => p.type === 'team').length
+      const startupsCount = participants.filter(p => p.type === 'startup').length
+      const staffCount = participants.filter(p => p.type === 'staff').length
       
-      console.log(`✅ Обновлен список участников: ${participants.length} (${teams} команд, ${startups} стартапов, ${staff} сотрудников)`)
+      console.log(`✅ Обновлен список участников: ${participants.length} (${teamsCount} команд, ${startupsCount} стартапов, ${staffCount} сотрудников)`)
       
     } catch (error) {
       console.error(`❌ Ошибка получения участников:`, error)
@@ -163,13 +156,13 @@ class DynamicEcosystemCache {
       await this.refreshAllNFTs()
       
       // 3. Загружаем последние транзакции для активных участников
-      await this.refreshAllTransactions()
+      // await this.refreshAllTransactions() // ОТКЛЮЧЕНО: транзакции теперь грузятся по требованию
       
       this.ecosystemData.lastUpdate = Date.now()
       const totalTime = Date.now() - startTime
       
       console.log(`✅ Глобальное обновление завершено за ${totalTime}ms`)
-      console.log(`📊 Загружено: ${this.ecosystemData.balances.size} балансов, ${this.ecosystemData.nfts.size} NFT коллекций`)
+      console.log(`📊 Загружено: ${this.ecosystemData.balances.size} балансов, ${this.ecosystemData.nfts.size} NFT коллекций (транзакции по требованию)`)
       
     } catch (error) {
       console.error(`❌ Ошибка глобального обновления:`, error)
@@ -181,12 +174,39 @@ class DynamicEcosystemCache {
    */
   private async refreshAllBalances(): Promise<void> {
     const wallets = this.ecosystemData.participants.map(p => p.walletAddress)
-    const baseUrl = getBaseUrl()
     
     if (wallets.length === 0) return
     
     try {
-      const response = await fetch(`${baseUrl}/api/token-balances`, {
+      // На сервере используем прямой вызов к библиотеке Alchemy
+      if (typeof window === 'undefined') {
+        const { getSplTokenBalance } = await import('@/lib/alchemy/solana')
+        console.log(`🔄 Серверная загрузка балансов для ${wallets.length} кошельков`)
+        
+        const promises = wallets.map(async (wallet) => {
+          try {
+            const balance = await getSplTokenBalance({
+              owner: wallet,
+              mint: this.PECOIN_MINT
+            })
+            return { wallet, balance: balance || 0 }
+          } catch (error) {
+            console.error(`❌ Ошибка загрузки баланса ${wallet}:`, error)
+            return { wallet, balance: 0 }
+          }
+        })
+        
+        const results = await Promise.all(promises)
+        results.forEach(({ wallet, balance }) => {
+          this.ecosystemData.balances.set(wallet, balance)
+        })
+        
+        console.log(`✅ Серверная загрузка: ${results.length} балансов`)
+        return
+      }
+      
+      // В браузере используем API endpoint
+      const response = await fetch('/api/token-balances', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -203,7 +223,7 @@ class DynamicEcosystemCache {
           this.ecosystemData.balances.set(wallet, balance as number)
         })
         
-        console.log(`✅ Batch-загружено ${Object.keys(data.balances).length} балансов`)
+        console.log(`✅ Клиентская загрузка: ${Object.keys(data.balances).length} балансов`)
       }
     } catch (error) {
       console.error(`❌ Ошибка загрузки балансов:`, error)
@@ -216,15 +236,20 @@ class DynamicEcosystemCache {
   private async refreshAllNFTs(): Promise<void> {
     if (this.ecosystemData.participants.length === 0) return
     
+    // Пропускаем загрузку NFT на сервере
+    if (typeof window === 'undefined') {
+      console.log(`⚠️ Пропуск загрузки NFT на сервере`)
+      return
+    }
+    
     const batchSize = 8 // Меньший размер батча для стабильности
-    const baseUrl = getBaseUrl()
     
     for (let i = 0; i < this.ecosystemData.participants.length; i += batchSize) {
       const batch = this.ecosystemData.participants.slice(i, i + batchSize)
       
       const promises = batch.map(async (participant) => {
         try {
-          const response = await fetch(`${baseUrl}/api/nft-collection`, {
+          const response = await fetch('/api/nft-collection', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ walletAddress: participant.walletAddress })
@@ -250,48 +275,6 @@ class DynamicEcosystemCache {
         await new Promise(resolve => setTimeout(resolve, 1500))
       }
     }
-  }
-
-  /**
-   * Загрузка последних транзакций для активных участников
-   */
-  private async refreshAllTransactions(): Promise<void> {
-    // Загружаем транзакции только для участников с балансом > 0
-    const activeParticipants = this.ecosystemData.participants.filter(p => 
-      (this.ecosystemData.balances.get(p.walletAddress) || 0) > 0
-    )
-    
-    const baseUrl = getBaseUrl()
-    
-    if (activeParticipants.length === 0) return
-    
-    console.log(`🔄 Загрузка транзакций для ${activeParticipants.length} активных участников`)
-    
-    const promises = activeParticipants.map(async (participant) => {
-      try {
-        const response = await fetch(`${baseUrl}/api/pecoin-history`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            walletAddress: participant.walletAddress,
-            limit: 10 
-          })
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          this.ecosystemData.transactions.set(participant.walletAddress, data.transactions || [])
-          return data.transactions?.length || 0
-        }
-      } catch (error) {
-        console.error(`❌ Ошибка загрузки транзакций для ${participant.name}:`, error)
-        return 0
-      }
-    })
-    
-    const results = await Promise.all(promises)
-    const totalTxs = results.reduce((sum, count) => sum + count, 0)
-    console.log(`✅ Загружено ${totalTxs} транзакций`)
   }
 
   /**
@@ -394,9 +377,8 @@ class DynamicEcosystemCache {
   private async refreshParticipantNFTs(walletAddress: string): Promise<void> {
     serverCache.invalidate(`nft-collection:wallet:${walletAddress}`)
     
-    const baseUrl = getBaseUrl()
     try {
-      const response = await fetch(`${baseUrl}/api/nft-collection`, {
+      const response = await fetch('/api/nft-collection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress })
@@ -414,9 +396,8 @@ class DynamicEcosystemCache {
   private async refreshParticipantTransactions(walletAddress: string): Promise<void> {
     serverCache.invalidate(`tx-history:${walletAddress}`)
     
-    const baseUrl = getBaseUrl()
     try {
-      const response = await fetch(`${baseUrl}/api/pecoin-history`, {
+      const response = await fetch('/api/pecoin-history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress, limit: 10 })
@@ -464,6 +445,14 @@ class DynamicEcosystemCache {
       clearInterval(this.participantsTimer)
       this.participantsTimer = undefined
     }
+  }
+
+  /**
+   * Публичный метод для обновления транзакций конкретного участника
+   */
+  updateTransactions(walletAddress: string, transactions: any[]): void {
+    this.ecosystemData.transactions.set(walletAddress, transactions);
+    console.log(`[DynamicEcosystemCache] Обновлены транзакции для ${walletAddress}`);
   }
 }
 

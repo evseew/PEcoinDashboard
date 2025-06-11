@@ -8,8 +8,6 @@ import { AuthProvider } from "@/components/auth/auth-provider"
 import { cn } from "@/lib/utils"
 import { TokenImageProvider } from "@/hooks/token-image-provider"
 import { Inter } from "next/font/google"
-import EcosystemInitializer from "@/components/EcosystemInitializer"
-
 const fontSans = FontSans({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -71,7 +69,6 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
       </head>
       <body className={cn("min-h-screen font-sans antialiased", fontSans.variable, fontDisplay.variable, inter.className)}>
-        <EcosystemInitializer />
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <AuthProvider>
             <TokenImageProvider>{children}</TokenImageProvider>

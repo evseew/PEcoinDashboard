@@ -1,7 +1,6 @@
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Users, Rocket, Trophy, Target } from "lucide-react"
-import { useSplTokenBalance } from "@/hooks/use-spl-token-balance"
 import { useNftCount } from "@/hooks/use-nft-count"
 
 interface EntityListItemProps {
@@ -14,10 +13,12 @@ interface EntityListItemProps {
   iconBg: string
   hoverBorder: string
   type: string
+  balance?: number // Теперь баланс приходит как готовый пропс
+  balanceLoading?: boolean
 }
 
-export function EntityListItem({ entity, index, pecoinMint, pecoinImg, alchemyApiKey, isTeam, iconBg, hoverBorder, type }: EntityListItemProps) {
-  const balance = useSplTokenBalance(entity.wallet_address, pecoinMint, alchemyApiKey)
+export function EntityListItem({ entity, index, pecoinMint, pecoinImg, alchemyApiKey, isTeam, iconBg, hoverBorder, type, balance, balanceLoading }: EntityListItemProps) {
+  // Убираем индивидуальную загрузку баланса - теперь он приходит готовым через пропсы
   const { nftCount, loading: nftLoading } = useNftCount(entity.wallet_address)
   
   return (
@@ -73,12 +74,13 @@ export function EntityListItem({ entity, index, pecoinMint, pecoinImg, alchemyAp
 
           <div
             className={`flex items-center ml-auto min-w-[110px] justify-end ${isTeam ? "bg-[#FFF8E8]" : "bg-[#E8F7F9]"} dark:bg-gray-700 px-3 py-2 rounded-full`}
+            title={`PEcoin баланс: ${balance?.toLocaleString() || 0}`}
           >
             <div className="w-5 h-5 mr-2 flex-shrink-0">
               <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
             </div>
             <span className="font-bold text-base tabular-nums">
-              {balance !== null ? balance.toLocaleString() : "..."}
+              {balanceLoading ? "..." : (balance !== undefined ? balance.toLocaleString() : "0")}
             </span>
           </div>
 

@@ -37,63 +37,85 @@ export function PublicDashboard() {
   const [totalTeamCoins, setTotalTeamCoins] = useState<number | null>(null)
   const [totalStartupCoins, setTotalStartupCoins] = useState<number | null>(null)
   const [totalCoins, setTotalCoins] = useState<number | null>(null)
+  const [balances, setBalances] = useState<Record<string, number>>({})
+  const [balancesLoading, setBalancesLoading] = useState(false)
 
   const pecoinMint = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
   const pecoinImg = useTokenImageUrl(pecoinMint, "/images/pecoin.png")
 
   useEffect(() => {
     const fetchData = async () => {
+      const startTime = Date.now()
+      console.log(`[PublicDashboard] Начинаю загрузку данных...`)
+      
       setLoading(true)
       setError(null)
       try {
+        console.log(`[PublicDashboard] Загружаю команды и стартапы из Supabase...`)
+        const supabaseStart = Date.now()
+        
         const { data: teams, error: teamsError } = await supabase.from("teams").select("*")
         const { data: startups, error: startupsError } = await supabase.from("startups").select("*")
+        
+        console.log(`[PublicDashboard] Supabase запрос выполнен за ${Date.now() - supabaseStart}ms`)
+        
         if (teamsError || startupsError) {
+          console.error(`[PublicDashboard] Ошибка Supabase:`, { teamsError, startupsError })
           setError("Ошибка загрузки данных")
         } else {
-          // Получаем signedUrl для логотипов команд
-          const teamsWithLogo = await Promise.all(
-            (teams || []).map(async (team) => ({
-              ...team,
-              logo: await getSignedUrl(team.logo_url),
-            }))
-          )
-          // Получаем signedUrl для логотипов стартапов
-          const startupsWithLogo = await Promise.all(
-            (startups || []).map(async (startup) => ({
-              ...startup,
-              logo: await getSignedUrl(startup.logo_url),
-            }))
-          )
+          console.log(`[PublicDashboard] Получено команд: ${teams?.length || 0}, стартапов: ${startups?.length || 0}`)
+          
+          // Упрощаем логику - не загружаем signedUrl, так как это замедляет процесс
+          const teamsWithLogo = (teams || []).map((team) => ({
+            ...team,
+            logo: team.logo_url, // Используем прямые URL без signed URL для ускорения
+          }))
+          
+          const startupsWithLogo = (startups || []).map((startup) => ({
+            ...startup,
+            logo: startup.logo_url, // Используем прямые URL без signed URL для ускорения
+          }))
+          
           setTeams(teamsWithLogo)
           setStartups(startupsWithLogo)
+          
+          console.log(`[PublicDashboard] Данные загружены за ${Date.now() - startTime}ms`)
         }
       } catch (err) {
+        console.error(`[PublicDashboard] Критическая ошибка:`, err)
         setError("Failed to load dashboard data")
       } finally {
         setLoading(false)
+        console.log(`[PublicDashboard] Общее время загрузки: ${Date.now() - startTime}ms`)
       }
     }
     fetchData()
   }, [])
 
-  // Считаем балансы PEcoin для всех команд и стартапов
+  // Групповая загрузка балансов для всех участников
   useEffect(() => {
-    const fetchBalances = async () => {
-      if (!teams.length && !startups.length) return
-      setTotalTeamCoins(null)
-      setTotalStartupCoins(null)
-      setTotalCoins(null)
+    const fetchAllBalances = async () => {
+      if (teams.length === 0 && startups.length === 0) return
+      
+      const startTime = Date.now()
+      console.log('[PublicDashboard] Начинаю групповую загрузку балансов...')
+      
+      setBalancesLoading(true)
       
       try {
-        // Собираем все кошельки команд и стартапов
+        // Собираем все уникальные адреса кошельков
         const teamWallets = teams.filter(team => team.wallet_address).map(team => team.wallet_address)
         const startupWallets = startups.filter(startup => startup.wallet_address).map(startup => startup.wallet_address)
-        const allWallets = [...teamWallets, ...startupWallets]
+        const allWallets = [...new Set([...teamWallets, ...startupWallets])] // убираем дубликаты
         
-        if (allWallets.length === 0) return
+        if (allWallets.length === 0) {
+          setBalancesLoading(false)
+          return
+        }
         
-        // Получаем балансы через кэшированный API
+        console.log(`[PublicDashboard] Загружаю балансы для ${allWallets.length} кошельков одним запросом`)
+        
+        // Один запрос для всех кошельков
         const response = await fetch('/api/token-balances', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -105,48 +127,61 @@ export function PublicDashboard() {
         
         if (response.ok) {
           const data = await response.json()
-          const balances = data.balances || {}
+          const fetchedBalances = data.balances || {}
+          
+          setBalances(fetchedBalances)
           
           // Подсчитываем суммы для команд и стартапов
-          const teamSum = teamWallets.reduce((sum, wallet) => sum + (balances[wallet] || 0), 0)
-          const startupSum = startupWallets.reduce((sum, wallet) => sum + (balances[wallet] || 0), 0)
+          const teamSum = teamWallets.reduce((sum, wallet) => sum + (fetchedBalances[wallet] || 0), 0)
+          const startupSum = startupWallets.reduce((sum, wallet) => sum + (fetchedBalances[wallet] || 0), 0)
           
           setTotalTeamCoins(teamSum)
           setTotalStartupCoins(startupSum)
           setTotalCoins(teamSum + startupSum)
+          
+          console.log(`[PublicDashboard] Балансы загружены за ${Date.now() - startTime}ms`)
         } else {
-          console.error('Failed to fetch balances:', response.status)
+          console.error('[PublicDashboard] Ошибка загрузки балансов:', response.status)
           setTotalTeamCoins(0)
           setTotalStartupCoins(0)
           setTotalCoins(0)
         }
       } catch (error) {
-        console.error('Error fetching balances:', error)
+        console.error('[PublicDashboard] Критическая ошибка загрузки балансов:', error)
         setTotalTeamCoins(0)
         setTotalStartupCoins(0)
         setTotalCoins(0)
+      } finally {
+        setBalancesLoading(false)
       }
     }
-    fetchBalances()
+    
+    fetchAllBalances()
   }, [teams, startups, pecoinMint])
 
   const handleTeamSort = (sortBy: string) => {
     setTeamSort(sortBy)
-    // In a real app, you would re-fetch or re-sort the data here
     if (sortBy === "name") {
       setTeams([...teams].sort((a, b) => a.name.localeCompare(b.name)))
     } else if (sortBy === "balance") {
-      setTeams([...teams].sort((a, b) => b.balance - a.balance))
+      setTeams([...teams].sort((a, b) => {
+        const balanceA = balances[a.wallet_address] || 0
+        const balanceB = balances[b.wallet_address] || 0
+        return balanceB - balanceA
+      }))
     }
   }
 
   const handleStartupSort = (sortBy: string) => {
     setStartupSort(sortBy)
-    // In a real app, you would re-fetch or re-sort the data here
     if (sortBy === "name") {
       setStartups([...startups].sort((a, b) => a.name.localeCompare(b.name)))
     } else if (sortBy === "balance") {
-      setStartups([...startups].sort((a, b) => b.balance - a.balance))
+      setStartups([...startups].sort((a, b) => {
+        const balanceA = balances[a.wallet_address] || 0
+        const balanceB = balances[b.wallet_address] || 0
+        return balanceB - balanceA
+      }))
     }
   }
 
@@ -321,6 +356,8 @@ export function PublicDashboard() {
                 onSort={handleTeamSort}
                 icon="team"
                 compact={true}
+                balances={balances}
+                balancesLoading={balancesLoading}
               />
             </motion.div>
           )}
@@ -341,6 +378,8 @@ export function PublicDashboard() {
                 onSort={handleStartupSort}
                 icon="startup"
                 compact={true}
+                balances={balances}
+                balancesLoading={balancesLoading}
               />
             </motion.div>
           )}

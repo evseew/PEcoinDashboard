@@ -50,10 +50,10 @@ export function TransactionTable({ transactions, entityType = "teams" }: Transac
             >
               <td className="py-4 px-4 font-medium">{index + 1}</td>
               <td className="py-4 px-4 font-medium">
-                {transaction.senderDisplay || (transaction.sender?.length > 12 ? `${transaction.sender.slice(0, 4)}...${transaction.sender.slice(-4)}` : transaction.sender)}
+                {transaction.sender?.length > 12 ? `${transaction.sender.slice(0, 4)}...${transaction.sender.slice(-4)}` : transaction.sender}
               </td>
               <td className="py-4 px-4 font-medium">
-                {transaction.receiverDisplay || (transaction.receiver?.length > 12 ? `${transaction.receiver.slice(0, 4)}...${transaction.receiver.slice(-4)}` : transaction.receiver)}
+                {transaction.receiver?.length > 12 ? `${transaction.receiver.slice(0, 4)}...${transaction.receiver.slice(-4)}` : transaction.receiver}
               </td>
               <td className="py-4 px-4">
                 {(transaction.type === "Token" || transaction.type === "PEcoin") ? (

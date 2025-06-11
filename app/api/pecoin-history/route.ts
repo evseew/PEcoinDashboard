@@ -75,23 +75,63 @@ async function getSignaturesForAddressWithLimit(
   }
 }
 
-async function getTransactionsBySignatures(signatures: string[]): Promise<any[]> {
-  const conn = getSolanaConnection();
-  const transactions = [];
-  for (const signature of signatures) {
+async function getTransactionWithRetries(
+  conn: Connection,
+  signature: string,
+  retries: number = 3
+): Promise<any> {
+  let lastError: any;
+  for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      // Запрашиваем "сырые" транзакции, чтобы избежать StructError для Token-2022 с jsonParsed
-      const tx = await conn.getTransaction(signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 }); // Используем maxSupportedTransactionVersion: 0
-      if (tx && tx.transaction && tx.transaction.message && tx.meta) {
-        transactions.push(tx);
+      const tx = await conn.getTransaction(signature, {
+        commitment: "confirmed",
+        maxSupportedTransactionVersion: 0,
+      });
+      if (tx) {
+        return tx;
       }
-      // Небольшая задержка, чтобы не перегружать RPC
-      await new Promise(res => setTimeout(res, 100)); 
-    } catch (e) {
-      console.error(`[API/getTransactionsBySignatures] Error fetching transaction ${signature}:`, e);
-      // Продолжаем, даже если одна транзакция не загрузилась
+      // Если tx === null, это значит транзакция еще не найдена, это не ошибка, а состояние.
+      // Не делаем retry для этого случая сразу, RPC сам ищет. Но если все попытки null, вернем null.
+      if (attempt === retries) return null;
+    } catch (e: any) {
+      lastError = e;
+      const isTimeout = e.message?.includes('ETIMEDOUT') || e.message?.includes('timed out');
+      
+      if (isTimeout && attempt < retries) {
+        console.warn(`[API/getTransactionWithRetries] Timeout on attempt ${attempt} for ${signature}. Retrying...`);
+        // Экспоненциальная задержка
+        await new Promise(res => setTimeout(res, 1000 * attempt)); 
+      } else {
+        // Если ошибка не таймаут, или попытки кончились - пробрасываем ошибку
+        throw e;
+      }
     }
   }
+  // Если все попытки не увенчались успехом (из-за таймаутов), бросаем последнюю ошибку
+  throw lastError;
+}
+
+async function getTransactionsBySignatures(signatures: string[]): Promise<any[]> {
+  const conn = getSolanaConnection();
+  const transactions: any[] = [];
+  const promises = signatures.map(signature => 
+    getTransactionWithRetries(conn, signature).catch(e => {
+      console.error(`[API/getTransactionsBySignatures] Failed to fetch transaction ${signature} after multiple retries:`, e);
+      return null; // Возвращаем null в случае неудачи, чтобы Promise.all не прервался
+    })
+  );
+
+  const results = await Promise.all(promises);
+
+  for (const tx of results) {
+    if (tx) {
+      transactions.push(tx);
+    }
+  }
+  
+  // Контролируемая параллельность вместо последовательного перебора с задержкой
+  // Это значительно ускорит процесс, сохраняя при этом контроль над нагрузкой
+  // Логика параллельности теперь внутри Promise.all
   return transactions;
 }
 

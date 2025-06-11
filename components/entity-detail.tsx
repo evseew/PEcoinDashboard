@@ -13,8 +13,6 @@ import { AnimatedBackground } from "@/components/animated-background"
 import { motion } from "framer-motion"
 import { useTokenImageUrl } from "@/hooks/token-image-provider"
 import { supabase } from "@/lib/supabaseClient"
-import { useSplTokenBalance } from "@/hooks/use-spl-token-balance"
-import { getUserTokenAccounts } from "@/lib/alchemy/solana"
 
 interface EntityDetailProps {
   entityType: string
@@ -144,14 +142,51 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
       if (error || !data) {
         setError("Entity not found")
         setEntity(null)
-      } else {
+        setLoading(false)
+        return
+      }
+
+      try {
+        // Получаем баланс через API
+        const balanceResponse = await fetch("/api/token-balances", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            wallets: [data.wallet_address],
+            mint: pecoinMint 
+          }),
+        })
+
+        let actualBalance = 0
+        if (balanceResponse.ok) {
+          const balanceData = await balanceResponse.json()
+          const rawBalance = balanceData.balances?.[data.wallet_address] || 0
+          // Принудительно преобразуем в число, на случай если API вернул объект
+          actualBalance = typeof rawBalance === 'number' ? rawBalance : Number(rawBalance) || 0
+        } else {
+          console.error("Ошибка получения баланса:", balanceResponse.status)
+        }
+
         // Получаем signedUrl для логотипа
         const logo = await getSignedUrl(data.logo_url)
         setEntity({
           id: data.id,
           name: data.name,
           description: data.description,
-          balance: data.balance,
+          balance: actualBalance,
+          logo,
+          walletAddress: data.wallet_address,
+          achievements: data.achievements,
+        })
+      } catch (err) {
+        console.error("Ошибка загрузки данных:", err)
+        // Устанавливаем entity даже при ошибке загрузки баланса
+        const logo = await getSignedUrl(data.logo_url)
+        setEntity({
+          id: data.id,
+          name: data.name,
+          description: data.description,
+          balance: 0,
           logo,
           walletAddress: data.wallet_address,
           achievements: data.achievements,
@@ -168,19 +203,14 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
       setNftsLoading(true)
       setNftsError(null)
       try {
-        console.log("Sending request to /api/nft-collection:", { walletAddress })
-
         const res = await fetch("/api/nft-collection", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ walletAddress }),
         })
         
-        console.log("NFT API Response status:", res.status)
-        
         if (res.ok) {
           const data = await res.json()
-          console.log("NFT API Response data:", data)
           
           // Адаптируем данные для NftGrid компонента
           const adaptedNFTs = (data.nfts || []).map((nft: any) => ({
@@ -196,7 +226,6 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
           }))
           
           setNfts(adaptedNFTs)
-          console.log(`Загружено ${adaptedNFTs.length} NFT`)
         } else {
           const errorData = await res.json()
           throw new Error(errorData.error || `HTTP ${res.status}`)
@@ -223,44 +252,28 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
           requestBody.beforeSignature = beforeSignature
         }
 
-        console.log("Sending request to /api/pecoin-history:", requestBody)
-
         const res = await fetch("/api/pecoin-history", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestBody),
         })
         
-        console.log("Response status:", res.status)
-        
         if (res.ok) {
           const data = await res.json()
-          
-          // Обогащаем транзакции отображаемыми именами
-          const enrichedTransactions = await Promise.all(
-            (data.transactions || []).map(async (tx: any) => ({
-              ...tx,
-              senderDisplay: await getDisplayName(tx.sender),
-              receiverDisplay: await getDisplayName(tx.receiver)
-            }))
-          )
+          const transactions = data.transactions || []
           
           if (beforeSignature) {
             // Это запрос следующей страницы - добавляем к существующим транзакциям
-            setTransactions(prev => [...prev, ...enrichedTransactions])
+            setTransactions(prev => [...prev, ...transactions])
           } else {
             // Это первый запрос - заменяем транзакции
-            setTransactions(enrichedTransactions)
+            setTransactions(transactions)
           }
           
           // Убираем старую логику NFT из транзакций
           // setNfts(prev => beforeSignature ? [...prev, ...enrichedTransactions.filter((tx: any) => tx.type === "NFT")] : enrichedTransactions.filter((tx: any) => tx.type === "NFT"))
           
           // Сохраняем nextBeforeSignature для пагинации
-          if (data.nextBeforeSignature) {
-            // Можно сохранить в state или использовать при необходимости
-            console.log("Next page available, nextBeforeSignature:", data.nextBeforeSignature)
-          }
           setNextBeforeSignature(data.nextBeforeSignature)
         } else {
           throw new Error(`HTTP ${res.status}`)
@@ -280,7 +293,6 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
   useEffect(() => {
     if (entity && entity.walletAddress) {
       fetchHistory(entity.walletAddress)
-      // Добавляем получение NFT коллекции
       fetchNFTCollection(entity.walletAddress)
     }
   }, [entity, fetchHistory, fetchNFTCollection])
@@ -300,9 +312,6 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
     setPage(newPage)
     setLoading(true)
   }
-
-  const walletAddress = entity?.walletAddress || ""
-  const balance = useSplTokenBalance(walletAddress, pecoinMint, alchemyApiKey)
 
   if (error) {
     return <ErrorOverlay message={error} />
@@ -413,7 +422,7 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
                     </div>
                   </motion.div>
                   <span className={`text-4xl font-display font-bold bg-gradient-to-r ${bgGradient} bg-clip-text text-transparent`}>
-                    {balance !== null ? balance.toLocaleString() : "..."}
+                    {typeof entity.balance === 'number' ? entity.balance.toLocaleString() : "..."}
                   </span>
                 </div>
               </div>

@@ -4,7 +4,6 @@ import Link from "next/link"
 import { ArrowUpDown, Users, Rocket, Trophy, Target } from "lucide-react"
 import { motion } from "framer-motion"
 import { useTokenImageUrl } from "@/hooks/token-image-provider"
-import { useSplTokenBalance } from "@/hooks/use-spl-token-balance"
 import { EntityListItem } from "./entity-list-item"
 
 interface EntityListProps {
@@ -15,9 +14,11 @@ interface EntityListProps {
   onSort: (sortBy: string) => void
   icon?: "team" | "startup"
   compact?: boolean
+  balances?: Record<string, number> // Объект с балансами для каждого кошелька
+  balancesLoading?: boolean
 }
 
-export function EntityList({ title, entities, type, currentSort, onSort, icon, compact = false }: EntityListProps) {
+export function EntityList({ title, entities, type, currentSort, onSort, icon, compact = false, balances, balancesLoading }: EntityListProps) {
   const handleSort = (sortBy: string) => {
     onSort(sortBy)
   }
@@ -111,6 +112,8 @@ export function EntityList({ title, entities, type, currentSort, onSort, icon, c
               iconBg={iconBg}
               hoverBorder={hoverBorder}
               type={type}
+              balance={balances?.[entity.wallet_address]}
+              balanceLoading={balancesLoading}
             />
           ))}
         </div>
