@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { serverCache } from '@/lib/server-cache'
+import { signedUrlCache } from '@/lib/signed-url-cache'
 
 export async function GET(request: NextRequest) {
   try {
     const stats = serverCache.getStats()
+    const signedUrlStats = signedUrlCache.getStats()
     
     // Получаем статистику кэша изображений
     let imageStats = null
@@ -22,6 +24,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       cache: stats,
+      signedUrlCache: {
+        ...signedUrlStats,
+        description: 'Кэш signed URLs для изображений из Supabase Storage'
+      },
       imageCache: imageStats,
       timestamp: new Date().toISOString()
     })

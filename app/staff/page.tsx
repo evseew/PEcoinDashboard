@@ -1,12 +1,10 @@
 import { supabase } from "@/lib/supabaseClient"
+import { signedUrlCache } from "@/lib/signed-url-cache"
 import Link from "next/link"
 
+// Используем общую утилиту кэширования signed URLs
 async function getSignedUrl(storageKey: string | null) {
-  if (storageKey && !storageKey.startsWith("http")) {
-    const { data } = await supabase.storage.from("dashboard.logos").createSignedUrl(storageKey, 60 * 60 * 24 * 7)
-    return data?.signedUrl || null
-  }
-  return storageKey
+  return signedUrlCache.getSignedUrl(storageKey)
 }
 
 export default async function StaffPage() {

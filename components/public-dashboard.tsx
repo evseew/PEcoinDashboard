@@ -15,14 +15,11 @@ import Link from "next/link"
 import { UserCog } from "lucide-react"
 import { useTokenImageUrl } from "@/hooks/token-image-provider"
 import { supabase } from "@/lib/supabaseClient"
+import { signedUrlCache } from "@/lib/signed-url-cache"
 
-// Получение signedUrl для логотипа
-async function getSignedUrl(storageKey: string | null) {
-  if (storageKey && !storageKey.startsWith("http")) {
-    const { data } = await supabase.storage.from("dashboard.logos").createSignedUrl(storageKey, 60 * 60 * 24 * 7)
-    return data?.signedUrl || null
-  }
-  return storageKey
+// Получение signedUrl для логотипа с кэшированием
+async function getSignedUrl(storageKey: string | null): Promise<string | null> {
+  return signedUrlCache.getSignedUrl(storageKey)
 }
 
 export function PublicDashboard() {
@@ -65,16 +62,24 @@ export function PublicDashboard() {
         } else {
           console.log(`[PublicDashboard] Получено команд: ${teams?.length || 0}, стартапов: ${startups?.length || 0}`)
           
-          // Упрощаем логику - не загружаем signedUrl, так как это замедляет процесс
-          const teamsWithLogo = (teams || []).map((team) => ({
-            ...team,
-            logo: team.logo_url, // Используем прямые URL без signed URL для ускорения
-          }))
+          // Получаем signed URLs для корректного отображения изображений
+          const signedUrlStart = Date.now()
           
-          const startupsWithLogo = (startups || []).map((startup) => ({
-            ...startup,
-            logo: startup.logo_url, // Используем прямые URL без signed URL для ускорения
-          }))
+          const teamsWithLogo = await Promise.all(
+            (teams || []).map(async (team) => ({
+              ...team,
+              logo: await getSignedUrl(team.logo_url), // Получаем signed URL с кэшированием
+            }))
+          )
+          
+          const startupsWithLogo = await Promise.all(
+            (startups || []).map(async (startup) => ({
+              ...startup,
+              logo: await getSignedUrl(startup.logo_url), // Получаем signed URL с кэшированием
+            }))
+          )
+          
+          console.log(`[PublicDashboard] Signed URLs получены за ${Date.now() - signedUrlStart}ms`)
           
           setTeams(teamsWithLogo)
           setStartups(startupsWithLogo)

@@ -1,24 +1,41 @@
 import { Edit, Trash2 } from "lucide-react"
 import { useSplTokenBalance } from "@/hooks/use-spl-token-balance"
 import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabaseClient"
+import { signedUrlCache } from "@/lib/signed-url-cache"
 
-export function EntityTableRow({ entity, pecoinMint, pecoinImg, alchemyApiKey, extraColumns, handleEdit, handleDelete }) {
+interface EntityTableRowProps {
+  entity: {
+    id: string
+    name: string
+    walletAddress: string
+    logo?: string | null
+    [key: string]: any
+  }
+  pecoinMint: string
+  pecoinImg: string
+  alchemyApiKey: string
+  extraColumns: { key: string; label: string }[]
+  handleEdit: (entity: any) => void
+  handleDelete: (entity: any) => void
+}
+
+export function EntityTableRow({ 
+  entity, 
+  pecoinMint, 
+  pecoinImg, 
+  alchemyApiKey, 
+  extraColumns, 
+  handleEdit, 
+  handleDelete 
+}: EntityTableRowProps) {
   const balance = useSplTokenBalance(entity.walletAddress, pecoinMint, alchemyApiKey)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchLogoUrl() {
-      if (entity.logo && typeof entity.logo === "string" && !entity.logo.startsWith("http")) {
-        // Это storage key, получаем signedUrl
-        const { data, error } = await supabase.storage.from("dashboard.logos").createSignedUrl(entity.logo, 60 * 60 * 24 * 7)
-        if (data?.signedUrl) setLogoUrl(data.signedUrl)
-        else setLogoUrl(null)
-      } else if (entity.logo) {
-        setLogoUrl(entity.logo)
-      } else {
-        setLogoUrl(null)
-      }
+      // Используем общую утилиту кэширования signed URLs
+      const url = await signedUrlCache.getSignedUrl(entity.logo || null)
+      setLogoUrl(url)
     }
     fetchLogoUrl()
   }, [entity.logo])
@@ -54,7 +71,7 @@ export function EntityTableRow({ entity, pecoinMint, pecoinImg, alchemyApiKey, e
           <span className="text-sm">{balance !== null ? balance.toLocaleString() : "..."}</span>
         </div>
       </td>
-      {extraColumns.map((column) => (
+      {extraColumns.map((column: { key: string; label: string }) => (
         <td key={column.key} className="px-4 py-3 whitespace-nowrap text-sm">
           {entity[column.key]}
         </td>

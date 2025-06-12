@@ -13,6 +13,7 @@ import { AnimatedBackground } from "@/components/animated-background"
 import { motion } from "framer-motion"
 import { useTokenImageUrl } from "@/hooks/token-image-provider"
 import { supabase } from "@/lib/supabaseClient"
+import { signedUrlCache } from "@/lib/signed-url-cache"
 
 interface EntityDetailProps {
   entityType: string
@@ -93,13 +94,9 @@ async function getDisplayName(walletAddress: string): Promise<string> {
   return entityName || formatWalletAddress(walletAddress)
 }
 
-// Получение signedUrl для логотипа
+// Используем общую утилиту кэширования signed URLs
 async function getSignedUrl(storageKey: string | null): Promise<string | null> {
-  if (storageKey && !storageKey.startsWith("http")) {
-    const { data } = await supabase.storage.from("dashboard.logos").createSignedUrl(storageKey, 60 * 60 * 24 * 7)
-    return data?.signedUrl || null
-  }
-  return storageKey
+  return signedUrlCache.getSignedUrl(storageKey)
 }
 
 export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
