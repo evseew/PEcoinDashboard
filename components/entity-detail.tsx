@@ -75,7 +75,7 @@ async function findEntityByWallet(walletAddress: string): Promise<string | null>
   }
 }
 
-// Функция для форматирования адреса кошелька
+// Функция для форматирования адреса кошелька (оставляем для совместимости)
 function formatWalletAddress(address: string): string {
   if (!address || address === "Unknown" || address === "Unknown/Mint" || address === "Unknown/Burn" || address === "Unknown/Internal") {
     return address
@@ -86,12 +86,6 @@ function formatWalletAddress(address: string): string {
     return `${address.slice(0, 4)}...${address.slice(-4)}`
   }
   return address
-}
-
-// Функция для получения отображаемого имени (название сущности или сокращенный адрес)
-async function getDisplayName(walletAddress: string): Promise<string> {
-  const entityName = await findEntityByWallet(walletAddress)
-  return entityName || formatWalletAddress(walletAddress)
 }
 
 // Используем общую утилиту кэширования signed URLs

@@ -3,10 +3,47 @@
 import { motion } from "framer-motion"
 import { CampIcon } from "@/components/camp-icons"
 import { useTokenImageUrl } from "@/hooks/token-image-provider"
+import { Users, Rocket, UserCog } from "lucide-react"
 
 interface TransactionTableProps {
   transactions: any[]
   entityType?: string
+}
+
+// Компонент для отображения участника с иконкой типа
+function ParticipantDisplay({ 
+  name, 
+  address, 
+  info, 
+  isTeam 
+}: { 
+  name: string
+  address: string
+  info?: { name: string, type: 'team' | 'startup' | 'staff', shortAddress: string } | null
+  isTeam: boolean 
+}) {
+  const accentColor = isTeam ? "text-[#FF6B6B]" : "text-[#3457D5]"
+  
+  if (info) {
+    const TypeIcon = info.type === 'team' ? Users : info.type === 'startup' ? Rocket : UserCog
+    const typeColorClass = info.type === 'team' ? 'text-red-500' : info.type === 'startup' ? 'text-blue-500' : 'text-green-500'
+    
+    return (
+      <div className="flex items-center gap-2">
+        <TypeIcon className={`w-4 h-4 ${typeColorClass}`} />
+        <span className={`font-medium ${accentColor}`} title={info.shortAddress}>
+          {info.name}
+        </span>
+      </div>
+    )
+  }
+  
+  // Fallback на сокращенный адрес
+  return (
+    <span className="font-medium text-gray-600 dark:text-gray-400">
+      {name}
+    </span>
+  )
 }
 
 export function TransactionTable({ transactions, entityType = "teams" }: TransactionTableProps) {
@@ -49,11 +86,21 @@ export function TransactionTable({ transactions, entityType = "teams" }: Transac
               }}
             >
               <td className="py-4 px-4 font-medium">{index + 1}</td>
-              <td className="py-4 px-4 font-medium">
-                {transaction.sender?.length > 12 ? `${transaction.sender.slice(0, 4)}...${transaction.sender.slice(-4)}` : transaction.sender}
+              <td className="py-4 px-4">
+                <ParticipantDisplay 
+                  name={transaction.senderName || transaction.sender} 
+                  address={transaction.sender}
+                  info={transaction.senderInfo}
+                  isTeam={isTeam}
+                />
               </td>
-              <td className="py-4 px-4 font-medium">
-                {transaction.receiver?.length > 12 ? `${transaction.receiver.slice(0, 4)}...${transaction.receiver.slice(-4)}` : transaction.receiver}
+              <td className="py-4 px-4">
+                <ParticipantDisplay 
+                  name={transaction.receiverName || transaction.receiver} 
+                  address={transaction.receiver}
+                  info={transaction.receiverInfo}
+                  isTeam={isTeam}
+                />
               </td>
               <td className="py-4 px-4">
                 {(transaction.type === "Token" || transaction.type === "PEcoin") ? (

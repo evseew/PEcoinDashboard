@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { Connection, PublicKey } from "@solana/web3.js"; // Используем Connection
 import { getAlchemyKey } from '@/lib/alchemy/solana'
 import { serverCache } from '@/lib/server-cache'
+import { walletNameResolver } from "@/lib/wallet-name-resolver"
+import { dynamicEcosystemCache } from "@/lib/dynamic-ecosystem-cache"
 
 // --- Константы ---
 const PECOIN_MINT = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"; // PEcoin mint address
@@ -267,14 +269,14 @@ function extractAndFormatPEcoinTransfers(
     
     if (overallUserDeltaRaw > BigInt(0)) { // Пользователь получил токены (баланс его счетов увеличился)
         action = "received";
-        toAddress = primaryUserTokenAccountInvolved || userWalletAddress; // Если не можем определить конкретный токен-аккаунт, ставим адрес кошелька
+        toAddress = userWalletAddress; // Всегда используем адрес владельца, а не токен-аккаунта
         amountRaw = overallUserDeltaRaw;
         // Ищем отправителя - тот, у кого баланс уменьшился на ту же общую сумму
         const potentialSender = pecoinDeltas.find(d => d.deltaRaw === -overallUserDeltaRaw && !userPecoinTokenAccounts.includes(d.address));
         fromAddress = potentialSender ? (potentialSender.owner || potentialSender.address) : "Unknown/Mint";
     } else if (overallUserDeltaRaw < BigInt(0)) { // Пользователь отправил токены
         action = "sent";
-        fromAddress = primaryUserTokenAccountInvolved || userWalletAddress;
+        fromAddress = userWalletAddress; // Всегда используем адрес владельца, а не токен-аккаунта
         amountRaw = -overallUserDeltaRaw;
         // Ищем получателя
         const potentialReceiver = pecoinDeltas.find(d => d.deltaRaw === amountRaw && !userPecoinTokenAccounts.includes(d.address));
@@ -417,9 +419,34 @@ export async function POST(request: Request) {
     // 5. Сортируем по дате (от новых к старым)
     processedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
-    // Ограничиваем количество возвращаемых транзакций, если нужно (например, первые 50)
-    // const finalTransactions = processedTransactions.slice(0, 50); // Пример ограничения
-    const finalTransactions = processedTransactions.slice(0, requestedLimit);
+    // 6. Проверяем и обогащаем транзакции именами участников
+    const participants = dynamicEcosystemCache.getAllParticipants()
+    if (participants.length === 0) {
+      console.log('[PEcoin History API] ⚠️ Экосистема пуста, инициализируем участников...')
+      try {
+        await dynamicEcosystemCache.refreshParticipants()
+      } catch (error) {
+        console.error('[PEcoin History API] ❌ Ошибка инициализации участников:', error)
+      }
+    }
+    
+    const enrichedTransactions = processedTransactions.map(tx => {
+      const senderInfo = walletNameResolver.getNameForWallet(tx.sender)
+      const receiverInfo = walletNameResolver.getNameForWallet(tx.receiver)
+      
+      return {
+        ...tx,
+        senderName: senderInfo ? senderInfo.name : walletNameResolver.getDisplayName(tx.sender),
+        receiverName: receiverInfo ? receiverInfo.name : walletNameResolver.getDisplayName(tx.receiver),
+        senderInfo,
+        receiverInfo
+      }
+    })
+    
+    // Ограничиваем количество возвращаемых транзакций, если нужно
+    const finalTransactions = enrichedTransactions.slice(0, requestedLimit);
+
+    console.log(`[PEcoin History API] ✅ Возвращено ${finalTransactions.length} обогащенных транзакций`);
 
     // Определяем nextBeforeSignature для следующего запроса
     let nextBeforeSignature: string | undefined = undefined;
