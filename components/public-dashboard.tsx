@@ -199,58 +199,149 @@ export function PublicDashboard() {
       {loading && <LoadingOverlay />}
       <AnimatedBackground />
 
-      <header className="py-6 px-4 md:px-8 border-b-4 border-[#FF6B6B] dark:border-[#FF6B6B]/80 relative bg-gradient-to-r from-[#FFD166]/10 to-[#06D6A0]/10 dark:from-[#FFD166]/5 dark:to-[#06D6A0]/5">
-        <div className="container mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <motion.div
-            className="flex flex-col md:flex-row items-center gap-4"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-          >
-            <div className="w-48 h-16">
-              <img src="/images/camp-logo.png" alt="PlanetEnglish Camp" className="h-full object-contain" />
-            </div>
-            <div className="text-center md:text-left">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] bg-clip-text text-transparent drop-shadow-sm">
-                StartUP Dashboard
-              </h1>
-              <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 mt-1">
-                Track teams, startups, and PEcoin transactions
-              </p>
-            </div>
-          </motion.div>
-
-          <div className="flex items-center space-x-3 self-center md:self-auto">
-            <div className="flex items-center bg-white/80 dark:bg-gray-800/80 rounded-full px-3 py-1.5 shadow-sm">
-              <div className="w-5 h-5 mr-2">
-                <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
-              </div>
-              <span className="font-bold text-sm">{totalCoins !== null ? totalCoins.toLocaleString() : "..."}</span>
-              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">in circulation</span>
-            </div>
+      <header className="relative overflow-hidden">
+        {/* Background with enhanced gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#FFD166]/15 via-[#FF6B6B]/10 to-[#06D6A0]/15 dark:from-[#FFD166]/8 dark:via-[#FF6B6B]/6 dark:to-[#06D6A0]/8"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
+        
+        {/* Animated particles */}
+        <div className="absolute top-4 left-1/4 w-2 h-2 bg-[#FFD166]/30 rounded-full animate-pulse"></div>
+        <div className="absolute top-8 right-1/3 w-1.5 h-1.5 bg-[#06D6A0]/40 rounded-full animate-pulse delay-1000"></div>
+        <div className="absolute bottom-6 left-1/3 w-1 h-1 bg-[#FF6B6B]/30 rounded-full animate-pulse delay-500"></div>
+        
+        <div className="relative px-4 md:px-8 py-8">
+          <div className="flex items-center justify-between w-full">
+            
+            {/* Left section: Logo only */}
             <motion.div
-              whileHover={{ rotate: 15, scale: 1.2 }}
-              whileTap={{ scale: 0.9 }}
-              className="p-2 bg-gradient-to-r from-[#FFD166] to-[#FF6B6B] rounded-full shadow-sm"
+              className="flex-shrink-0"
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
             >
-              <CampIcon type="beach" size="sm" />
+              <motion.div 
+                whileHover={{ scale: 1.05 }}
+                transition={{ duration: 0.3 }}
+              >
+                <img src="/images/camp-logo.png" alt="PlanetEnglish Camp" className="h-16 w-auto object-contain" />
+              </motion.div>
             </motion.div>
-            <Link href="/login/admin">
+            
+            {/* Center section: Title and PEcoin Stats on same line */}
+            <div className="flex-1 flex flex-col items-center">
+              <div className="flex items-center gap-8">
+                <div className="text-center">
+                  <motion.h1 
+                    className="text-4xl md:text-5xl lg:text-6xl font-display font-black bg-gradient-to-r from-[#FF6B6B] via-[#FFD166] to-[#06D6A0] bg-clip-text text-transparent"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.2 }}
+                  >
+                    StartUP Dashboard
+                  </motion.h1>
+                  <motion.p 
+                    className="text-base md:text-lg text-gray-600 dark:text-gray-300 mt-1 font-medium"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, delay: 0.4 }}
+                  >
+                    Track teams, startups, and PEcoin transactions
+                  </motion.p>
+                </div>
+                
+                {/* PEcoin Stats - on same line */}
+                <motion.div 
+                  className="hidden lg:flex items-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl px-5 py-3 shadow-lg border border-white/20 dark:border-gray-700/30"
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  transition={{ duration: 0.2 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                >
+                  <div className="relative mr-3">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-[#FFD166] to-[#FF6B6B] rounded-full blur opacity-75"></div>
+                    <div className="relative w-8 h-8 bg-white dark:bg-gray-800 rounded-full p-1">
+                      <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="font-bold text-lg text-gray-900 dark:text-white">
+                        {totalCoins !== null ? totalCoins.toLocaleString() : "..."}
+                      </span>
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">PEcoins</span>
+                    </div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">in circulation</span>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+
+            {/* Right section: Control buttons only */}
+            <motion.div
+              className="flex items-center gap-3"
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+            >
+              <Link href="/login/admin">
+                <motion.div
+                  whileHover={{ scale: 1.1, rotate: 5 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="relative group"
+                  title="Admin Panel"
+                >
+                  <div className="absolute -inset-1 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
+                  <div className="relative p-3 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full shadow-lg">
+                    <UserCog className="h-5 w-5 text-white" />
+                  </div>
+                </motion.div>
+              </Link>
+
               <motion.div
                 whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="p-2 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full shadow-sm"
-                title="Admin Login"
+                whileTap={{ scale: 0.95 }}
+                className="relative"
               >
-                <UserCog className="h-5 w-5 text-white" />
+                <div className="p-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full shadow-lg border border-white/30 dark:border-gray-700/30">
+                  <ThemeToggle />
+                </div>
               </motion.div>
-            </Link>
-            <ThemeToggle />
+            </motion.div>
           </div>
+
+          {/* Mobile PEcoin stats */}
+          <motion.div 
+            className="lg:hidden flex justify-center mt-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+          >
+            <div className="flex items-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl px-5 py-3 shadow-lg border border-white/20 dark:border-gray-700/30">
+              <div className="relative mr-3">
+                <div className="absolute -inset-1 bg-gradient-to-r from-[#FFD166] to-[#FF6B6B] rounded-full blur opacity-75"></div>
+                <div className="relative w-8 h-8 bg-white dark:bg-gray-800 rounded-full p-1">
+                  <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full" />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-baseline gap-1">
+                  <span className="font-bold text-lg text-gray-900 dark:text-white">
+                    {totalCoins !== null ? totalCoins.toLocaleString() : "..."}
+                  </span>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">PEcoins</span>
+                </div>
+                <span className="text-xs text-gray-500 dark:text-gray-400">in circulation</span>
+              </div>
+            </div>
+          </motion.div>
         </div>
+        
+        {/* Bottom border with gradient */}
+        <div className="h-1 bg-gradient-to-r from-[#FFD166] via-[#FF6B6B] to-[#06D6A0]"></div>
       </header>
 
-      <div className="container mx-auto py-4 px-4 md:px-8">
+      <div className="py-4 px-4 md:px-8">
         {/* Dashboard Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <motion.div
