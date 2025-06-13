@@ -31,6 +31,7 @@ interface EntityTableProps {
     label: string
   }[]
   isLoading?: boolean
+  showBalance?: boolean
 }
 
 export function EntityTable({
@@ -42,6 +43,7 @@ export function EntityTable({
   onDeleteEntity,
   extraColumns = [],
   isLoading = false,
+  showBalance = false,
 }: EntityTableProps) {
   const [sortField, setSortField] = useState<string>("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
@@ -134,19 +136,21 @@ export function EntityTable({
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                   Wallet Address
                 </th>
-                <th
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort("balance")}
-                >
-                  <div className="flex items-center">
-                    <span>Balance</span>
-                    <ArrowUpDown
-                      className={`ml-1 h-3 w-3 ${
-                        sortField === "balance" ? "text-[#FF6B6B]" : "text-gray-400 dark:text-gray-500"
-                      }`}
-                    />
-                  </div>
-                </th>
+                {showBalance && (
+                  <th
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                    onClick={() => handleSort("balance")}
+                  >
+                    <div className="flex items-center">
+                      <span>Balance</span>
+                      <ArrowUpDown
+                        className={`ml-1 h-3 w-3 ${
+                          sortField === "balance" ? "text-[#FF6B6B]" : "text-gray-400 dark:text-gray-500"
+                        }`}
+                      />
+                    </div>
+                  </th>
+                )}
                 {extraColumns.map((column) => (
                   <th
                     key={column.key}
@@ -172,7 +176,7 @@ export function EntityTable({
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan={4 + extraColumns.length}
+                    colSpan={(showBalance ? 4 : 3) + extraColumns.length}
                     className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     <div className="flex justify-center items-center">
@@ -184,7 +188,7 @@ export function EntityTable({
               ) : sortedEntities.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4 + extraColumns.length}
+                    colSpan={(showBalance ? 4 : 3) + extraColumns.length}
                     className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     No {entityType === "team" ? "teams" : entityType === "startup" ? "startups" : "staff members"}{" "}
@@ -200,6 +204,7 @@ export function EntityTable({
                     pecoinImg={pecoinImg}
                     alchemyApiKey={alchemyApiKey}
                     extraColumns={extraColumns}
+                    showBalance={showBalance}
                     handleEdit={handleEdit}
                     handleDelete={handleDelete}
                   />

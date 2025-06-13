@@ -20,6 +20,7 @@ export default function StartupsPage() {
   const [startups, setStartups] = useState<Startup[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // Загрузка списка стартапов из Supabase
   const fetchStartups = async () => {
@@ -34,7 +35,7 @@ export default function StartupsPage() {
         walletAddress: startup.wallet_address,
         logo: startup.logo_url,
         description: startup.description,
-        achievements: startup.achievements,
+        achievements: startup.achievements || 0,
         balance: 0,
       }))
     )
@@ -43,7 +44,7 @@ export default function StartupsPage() {
 
   useEffect(() => {
     fetchStartups()
-  }, [])
+  }, [refreshKey])
 
   // Создание стартапа
   const handleCreateStartup = async (data: any) => {
@@ -111,10 +112,22 @@ export default function StartupsPage() {
     fetchStartups()
   }
 
+  const forceRefresh = () => {
+    setRefreshKey(prev => prev + 1)
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-display font-bold">Manage Startups</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-display font-bold">Manage Startups</h1>
+          <button
+            onClick={forceRefresh}
+            className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+          >
+            🔄 Обновить
+          </button>
+        </div>
         {error && <div className="text-red-500">{error}</div>}
         <EntityTable
           title="Startups"
@@ -123,12 +136,8 @@ export default function StartupsPage() {
           onCreateEntity={handleCreateStartup}
           onUpdateEntity={handleUpdateStartup}
           onDeleteEntity={handleDeleteStartup}
-          extraColumns={[
-            {
-              key: "achievements",
-              label: "Achievements",
-            },
-          ]}
+          extraColumns={[]}
+          showBalance={false}
           isLoading={isLoading}
         />
       </div>

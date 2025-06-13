@@ -121,7 +121,12 @@ export default function StaffPage() {
               key: "description",
               label: "Description",
             },
+            {
+              key: "nftCount",
+              label: "NFT",
+            },
           ]}
+          showBalance={true}
           isLoading={isLoading}
         />
       </div>

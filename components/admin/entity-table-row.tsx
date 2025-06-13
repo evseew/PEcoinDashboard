@@ -1,5 +1,6 @@
 import { Edit, Trash2 } from "lucide-react"
 import { useSplTokenBalance } from "@/hooks/use-spl-token-balance"
+import { useNftCount } from "@/hooks/use-nft-count"
 import { useEffect, useState } from "react"
 import { signedUrlCache } from "@/lib/signed-url-cache"
 
@@ -15,6 +16,7 @@ interface EntityTableRowProps {
   pecoinImg: string
   alchemyApiKey: string
   extraColumns: { key: string; label: string }[]
+  showBalance?: boolean
   handleEdit: (entity: any) => void
   handleDelete: (entity: any) => void
 }
@@ -25,10 +27,12 @@ export function EntityTableRow({
   pecoinImg, 
   alchemyApiKey, 
   extraColumns, 
+  showBalance = true, 
   handleEdit, 
   handleDelete 
 }: EntityTableRowProps) {
-  const balance = useSplTokenBalance(entity.walletAddress, pecoinMint, alchemyApiKey)
+  const { balance, loading } = useSplTokenBalance(entity.walletAddress, pecoinMint, alchemyApiKey)
+  const { nftCount, loading: nftLoading } = useNftCount(entity.walletAddress)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -63,17 +67,33 @@ export function EntityTableRow({
       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
         {entity.walletAddress.slice(0, 6)}...{entity.walletAddress.slice(-4)}
       </td>
-      <td className="px-4 py-3 whitespace-nowrap">
-        <div className="flex items-center">
-          <div className="w-4 h-4 mr-1">
-            <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
+      {showBalance && (
+        <td className="px-4 py-3 whitespace-nowrap">
+          <div className="flex items-center">
+            <div className="w-4 h-4 mr-1">
+              <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
+            </div>
+            <span className="text-sm">
+              {loading ? "..." : balance !== null ? balance.toLocaleString() : "0"}
+            </span>
           </div>
-          <span className="text-sm">{balance !== null ? balance.toLocaleString() : "..."}</span>
-        </div>
-      </td>
+        </td>
+      )}
       {extraColumns.map((column: { key: string; label: string }) => (
         <td key={column.key} className="px-4 py-3 whitespace-nowrap text-sm">
-          {entity[column.key]}
+          {column.key === 'nftCount' 
+            ? (
+              <div className="flex items-center">
+                <span className="text-purple-500 mr-1">🖼️</span>
+                <span>
+                  {nftLoading ? "..." : nftCount !== null ? nftCount : "0"}
+                </span>
+              </div>
+            )
+            : column.key === 'achievements' 
+            ? (entity[column.key] || 0)
+            : entity[column.key]
+          }
         </td>
       ))}
       <td className="px-4 py-3 whitespace-nowrap text-right text-sm">

@@ -20,6 +20,7 @@ export default function TeamsPage() {
   const [teams, setTeams] = useState<Team[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // Загрузка списка команд из Supabase
   const fetchTeams = async () => {
@@ -27,13 +28,16 @@ export default function TeamsPage() {
     setError(null)
     const { data, error } = await supabase.from("teams").select("*")
     if (error) setError(error.message)
-    setTeams(data || [])
+    setTeams((data || []).map(team => ({
+      ...team,
+      achievements: team.achievements || 0
+    })))
     setIsLoading(false)
   }
 
   useEffect(() => {
     fetchTeams()
-  }, [])
+  }, [refreshKey])
 
   // Создание команды
   const handleCreateTeam = async (data: any) => {
@@ -101,10 +105,22 @@ export default function TeamsPage() {
     fetchTeams()
   }
 
+  const forceRefresh = () => {
+    setRefreshKey(prev => prev + 1)
+  }
+
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-display font-bold">Manage Teams</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-display font-bold">Manage Teams</h1>
+          <button
+            onClick={forceRefresh}
+            className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+          >
+            🔄 Обновить
+          </button>
+        </div>
         {error && <div className="text-red-500">{error}</div>}
         <EntityTable
           title="Teams"
@@ -114,19 +130,14 @@ export default function TeamsPage() {
             walletAddress: team.wallet_address,
             logo: team.logo_url,
             description: team.description,
-            achievements: team.achievements,
             balance: 0,
           }))}
           entityType="team"
           onCreateEntity={handleCreateTeam}
           onUpdateEntity={handleUpdateTeam}
           onDeleteEntity={handleDeleteTeam}
-          extraColumns={[
-            {
-              key: "achievements",
-              label: "Achievements",
-            },
-          ]}
+          extraColumns={[]}
+          showBalance={false}
           isLoading={isLoading}
         />
       </div>
