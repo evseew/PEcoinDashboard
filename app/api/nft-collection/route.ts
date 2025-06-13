@@ -14,6 +14,9 @@ interface NFTData {
   description: string
   collection: string
   attributes: any[]
+  isCompressed?: boolean
+  treeId?: string
+  leafIndex?: number
 }
 
 async function delay(ms: number): Promise<void> {
@@ -131,7 +134,9 @@ async function getSolanaNFTs(ownerAddress: string): Promise<NFTData[]> {
               image: externalMetadata?.image || '',
               description: externalMetadata?.description || '',
               collection: externalMetadata?.collection?.name || 'Неизвестная коллекция',
-              attributes: externalMetadata?.attributes || []
+              attributes: externalMetadata?.attributes || [],
+              // Обычные NFT всегда НЕ compressed
+              isCompressed: false
             }
             
             // Добавляем только если есть осмысленные данные
@@ -152,6 +157,175 @@ async function getSolanaNFTs(ownerAddress: string): Promise<NFTData[]> {
     
   } catch (error) {
     console.error(`[getSolanaNFTs] Критическая ошибка:`, error)
+    throw error
+  }
+}
+
+// Функция для получения compressed NFT через DAS API
+async function getCompressedNFTs(ownerAddress: string): Promise<NFTData[]> {
+  try {
+    console.log(`[getCompressedNFTs] Поиск compressed NFT для кошелька: ${ownerAddress}`)
+    
+    // Формируем DAS API запрос
+    const dasRequest = {
+      jsonrpc: '2.0',
+      id: 'get-assets',
+      method: 'getAssetsByOwner',
+      params: {
+        ownerAddress,
+        page: 1,
+        limit: 50, // Ограничиваем количество
+        displayOptions: {
+          showFungible: false,
+          showUnverifiedCollections: false
+        }
+      }
+    }
+
+    console.log(`[getCompressedNFTs] Отправляем DAS запрос...`)
+    
+    const response = await fetch(ALCHEMY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(dasRequest),
+      signal: AbortSignal.timeout(15000) // 15 секунд таймаут
+    })
+
+    if (!response.ok) {
+      throw new Error(`DAS API error: ${response.status} ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    
+    if (data.error) {
+      throw new Error(`DAS API error: ${data.error.message}`)
+    }
+
+    const assets = data.result?.items || []
+    console.log(`[getCompressedNFTs] Получено ${assets.length} ассетов через DAS API`)
+
+    const compressedNFTs: NFTData[] = []
+    let processedCount = 0
+    let compressedCount = 0
+
+    for (const asset of assets) {
+      try {
+        processedCount++
+        
+        // Проверяем что это compressed NFT
+        const isCompressed = asset.compression?.compressed === true
+        
+        if (!isCompressed) {
+          console.log(`[getCompressedNFTs] ${processedCount}: Пропущен обычный NFT ${asset.id}`)
+          continue // Пропускаем обычные NFT
+        }
+        
+        compressedCount++
+        console.log(`[getCompressedNFTs] ${processedCount}: Обрабатываем compressed NFT ${asset.id}`)
+
+        // Извлекаем данные asset с улучшенной обработкой
+        const metadata = asset.content?.metadata || {}
+        const files = asset.content?.files || []
+        const primaryFile = files.find((f: any) => f.uri) || files[0]
+        
+        // Пытаемся найти изображение в разных местах
+        let imageUrl = ''
+        if (primaryFile?.uri) {
+          imageUrl = primaryFile.uri
+        } else if (metadata.image) {
+          imageUrl = metadata.image
+        } else if (asset.content?.links?.image) {
+          imageUrl = asset.content.links.image
+        }
+
+        // Улучшенное получение имени
+        let assetName = metadata.name || ''
+        if (!assetName && asset.content?.json_uri) {
+          assetName = 'Compressed NFT'
+        } else if (!assetName) {
+          assetName = `cNFT #${asset.compression?.leaf_id || 'Unknown'}`
+        }
+
+        const nftData: NFTData = {
+          mintAddress: asset.id, // Для compressed NFT используем assetId как mintAddress
+          name: assetName,
+          symbol: metadata.symbol || 'cNFT',
+          uri: asset.content?.json_uri || '',
+          image: imageUrl,
+          description: metadata.description || '',
+          collection: asset.grouping?.find((g: any) => g.group_key === 'collection')?.group_value || 'Compressed Collection',
+          attributes: metadata.attributes || [],
+          // Специфичные поля для compressed NFT
+          isCompressed: true,
+          treeId: asset.compression?.tree || '',
+          leafIndex: asset.compression?.leaf_id || 0
+        }
+
+        // Добавляем только если есть осмысленные данные
+        if (nftData.name && nftData.name.trim() !== '') {
+          compressedNFTs.push(nftData)
+          console.log(`[getCompressedNFTs] ✓ Compressed NFT: ${nftData.name}`)
+        } else {
+          console.log(`[getCompressedNFTs] ⚠️ Пропущен cNFT без имени: ${asset.id}`)
+        }
+
+      } catch (assetError) {
+        console.error(`[getCompressedNFTs] Ошибка обработки asset:`, assetError)
+        continue
+      }
+    }
+
+    console.log(`[getCompressedNFTs] Обработано ${processedCount} ассетов, найдено ${compressedCount} compressed, добавлено ${compressedNFTs.length} валидных cNFT`)
+    return compressedNFTs
+
+  } catch (error) {
+    console.error(`[getCompressedNFTs] Ошибка получения compressed NFT:`, error)
+    // Возвращаем пустой массив вместо ошибки, чтобы обычные NFT всё равно загружались
+    return []
+  }
+}
+
+// Объединенная функция для получения всех NFT (обычных + compressed)
+async function getAllNFTs(ownerAddress: string): Promise<NFTData[]> {
+  try {
+    console.log(`[getAllNFTs] Поиск всех NFT для кошелька: ${ownerAddress}`)
+    
+    // Запускаем параллельно получение обычных и compressed NFT
+    const [standardNFTs, compressedNFTs] = await Promise.allSettled([
+      getSolanaNFTs(ownerAddress),
+      getCompressedNFTs(ownerAddress)
+    ])
+
+    const allNFTs: NFTData[] = []
+
+    // Добавляем обычные NFT
+    if (standardNFTs.status === 'fulfilled') {
+      allNFTs.push(...standardNFTs.value)
+      console.log(`[getAllNFTs] Добавлено ${standardNFTs.value.length} обычных NFT`)
+    } else {
+      console.error('[getAllNFTs] Ошибка получения обычных NFT:', standardNFTs.reason)
+    }
+
+    // Добавляем compressed NFT  
+    if (compressedNFTs.status === 'fulfilled') {
+      allNFTs.push(...compressedNFTs.value)
+      console.log(`[getAllNFTs] Добавлено ${compressedNFTs.value.length} compressed NFT`)
+    } else {
+      console.error('[getAllNFTs] Ошибка получения compressed NFT:', compressedNFTs.reason)
+    }
+
+    // Убираем дубликаты по mintAddress (на всякий случай)
+    const uniqueNFTs = allNFTs.filter((nft, index, self) => 
+      index === self.findIndex(n => n.mintAddress === nft.mintAddress)
+    )
+
+    console.log(`[getAllNFTs] Итого уникальных NFT: ${uniqueNFTs.length}`)
+    return uniqueNFTs
+
+  } catch (error) {
+    console.error(`[getAllNFTs] Критическая ошибка:`, error)
     throw error
   }
 }
@@ -182,12 +356,8 @@ export async function POST(request: NextRequest) {
     // Создаем ключ для кэша
     const cacheKey = ServerCache.createKey('nft-collection', { wallet: walletAddress })
     
-    // Получаем данные с кэшированием
-    const nfts = await serverCache.getOrFetch(
-      cacheKey,
-      () => getSolanaNFTs(walletAddress),
-      'NFT_COLLECTION'
-    )
+    // Временно отключаем кэш для тестирования compressed NFT
+    const nfts = await getAllNFTs(walletAddress)
     
     console.log(`[API] Возвращено ${nfts.length} NFT для кошелька ${walletAddress}`)
     
