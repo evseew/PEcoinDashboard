@@ -7,38 +7,88 @@ if (typeof globalThis !== 'undefined' && !globalThis.adminCacheMap) {
 const adminCache = globalThis.adminCacheMap || new Map<string, { data: any; timestamp: number }>()
 const CACHE_TTL = 2 * 60 * 1000 // 2 минуты
 
-// Хук для дашборда админа
+// Хук для дашборда админа с быстрой загрузкой
 export function useAdminDashboard() {
   const [stats, setStats] = useState({
     teams: { count: 0, change: 0 },
     startups: { count: 0, change: 0 },
     staff: { count: 0, change: 0 },
-    totalPEcoins: { count: 0, change: 0 },
+    totalPEcoins: { count: 0, change: 0, loading: true },
   })
   const [recentActivity, setRecentActivity] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [balancesLoading, setBalancesLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const loadedRef = useRef(false)
 
-  const fetchDashboardData = async () => {
-    const cacheKey = 'admin-dashboard-stats'
+  const fetchDashboardData = async (mode: 'fast' | 'full' = 'fast') => {
+    const cacheKey = `admin-dashboard-stats-${mode}`
     
-    // Проверяем кэш
+    // Для быстрого режима всегда делаем запрос (данные небольшие)
+    if (mode === 'fast') {
+      setIsLoading(true)
+      setError(null)
+      
+      try {
+        const response = await fetch('/api/admin/dashboard-stats?mode=fast')
+        
+        if (!response.ok) {
+          throw new Error('Не удалось загрузить статистику дашборда')
+        }
+
+        const data = await response.json()
+        
+        if (data.success) {
+          setStats(data.stats)
+          setIsLoading(false)
+          
+          // Сразу после быстрой загрузки запускаем полную
+          if (!loadedRef.current) {
+            loadedRef.current = true
+            setTimeout(() => fetchFullData(), 100)
+          }
+        } else {
+          throw new Error(data.error || 'Ошибка получения данных')
+        }
+      } catch (error) {
+        console.error("Ошибка быстрой загрузки данных дашборда:", error)
+        setError(error instanceof Error ? error.message : 'Произошла ошибка')
+        setIsLoading(false)
+        
+        // Показываем базовую структуру
+        setStats({
+          teams: { count: 0, change: 0 },
+          startups: { count: 0, change: 0 },
+          staff: { count: 0, change: 0 },
+          totalPEcoins: { count: 0, change: 0, loading: true },
+        })
+      }
+      return
+    }
+
+    // Полная загрузка с кэшированием
+    await fetchFullData()
+  }
+
+  const fetchFullData = async () => {
+    const cacheKey = 'admin-dashboard-stats-full'
+    
+    // Проверяем кэш для полных данных
     const cached = adminCache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       setStats(cached.data.stats)
       setRecentActivity(cached.data.recentActivity || [])
-      setIsLoading(false)
+      setBalancesLoading(false)
       return
     }
 
-    setIsLoading(true)
-    setError(null)
+    setBalancesLoading(true)
     
     try {
-      const response = await fetch('/api/admin/dashboard-stats')
+      const response = await fetch('/api/admin/dashboard-stats?mode=full')
       
       if (!response.ok) {
-        throw new Error('Не удалось загрузить статистику дашборда')
+        throw new Error('Не удалось загрузить полную статистику дашборда')
       }
 
       const data = await response.json()
@@ -52,38 +102,45 @@ export function useAdminDashboard() {
         
         setStats(data.stats)
         setRecentActivity(data.recentActivity || [])
+        
+        console.log(`✅ Полные данные загружены за ${data.timing?.balanceLoadingTime || 'н/д'}ms`)
       } else {
         throw new Error(data.error || 'Ошибка получения данных')
       }
     } catch (error) {
-      console.error("Ошибка загрузки данных дашборда:", error)
-      setError(error instanceof Error ? error.message : 'Произошла ошибка')
-      setStats({
-        teams: { count: 0, change: 0 },
-        startups: { count: 0, change: 0 },
-        staff: { count: 0, change: 0 },
-        totalPEcoins: { count: 0, change: 0 },
-      })
-      setRecentActivity([])
+      console.error("Ошибка полной загрузки данных дашборда:", error)
+      // Не показываем ошибку если уже есть базовые данные
+      if (stats.teams.count === 0) {
+        setError(error instanceof Error ? error.message : 'Произошла ошибка')
+      }
     } finally {
-      setIsLoading(false)
+      setBalancesLoading(false)
     }
   }
 
   const invalidateCache = () => {
-    adminCache.delete('admin-dashboard-stats')
+    adminCache.delete('admin-dashboard-stats-fast')
+    adminCache.delete('admin-dashboard-stats-full')
+    loadedRef.current = false
+  }
+
+  const refetch = () => {
+    loadedRef.current = false
+    setBalancesLoading(true)
+    fetchDashboardData('fast')
   }
 
   useEffect(() => {
-    fetchDashboardData()
+    fetchDashboardData('fast')
   }, [])
 
   return { 
     stats, 
     recentActivity, 
     isLoading, 
+    balancesLoading,
     error, 
-    refetch: fetchDashboardData,
+    refetch,
     invalidateCache 
   }
 }

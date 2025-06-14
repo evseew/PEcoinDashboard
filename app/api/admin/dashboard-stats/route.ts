@@ -13,31 +13,112 @@ interface ActivityItem {
 
 export async function GET(request: NextRequest) {
   try {
-    // Получаем основную статистику из базы данных
+    const url = new URL(request.url)
+    const mode = url.searchParams.get('mode') || 'full' // 'fast' или 'full'
+    
+    // 1. БЫСТРЫЕ ДАННЫЕ - всегда загружаем первыми (< 100ms)
     const [teamsResult, startupsResult, staffResult] = await Promise.all([
       supabase.from("teams").select("id", { count: 'exact' }),
       supabase.from("startups").select("id", { count: 'exact' }),
       supabase.from("staff").select("id", { count: 'exact' })
     ])
 
-    // Получаем статистику PEcoins из динамического кэша
-    // Проверяем, инициализирован ли кэш, если нет - инициализируем
-    const ecosystemStats = dynamicEcosystemCache.getEcosystemStats()
-    
-    // Если кэш пустой или устарел, пытаемся его инициализировать
-    let finalEcosystemStats = ecosystemStats
-    if (ecosystemStats.totalParticipants === 0 || ecosystemStats.cacheAge > 30 * 60 * 1000) {
-      try {
-        console.log('🔄 Инициализация кэша экосистемы для админ дашборда...')
-        await dynamicEcosystemCache.autoInitialize()
-        // Получаем обновленную статистику после инициализации
-        finalEcosystemStats = dynamicEcosystemCache.getEcosystemStats()
-      } catch (error) {
-        console.error('❌ Ошибка инициализации кэша:', error)
-      }
+    const quickStats = {
+      teams: { count: teamsResult.count || 0, change: 0 },
+      startups: { count: startupsResult.count || 0, change: 0 },
+      staff: { count: staffResult.count || 0, change: 0 },
+      totalPEcoins: { count: 0, change: 0, loading: true } // помечаем как загружается
     }
+
+    // Если быстрый режим - возвращаем только базовые данные
+    if (mode === 'fast') {
+      return NextResponse.json({
+        success: true,
+        stats: quickStats,
+        recentActivity: [],
+        mode: 'fast'
+      })
+    }
+
+    // 2. МЕДЛЕННЫЕ ДАННЫЕ - балансы PEcoin (могут занять несколько секунд)
+    let totalPEcoins = 0
+    let balanceLoadingTime = 0
     
-    // Собираем данные о недавней активности (последние записи из каждой таблицы)
+    try {
+      const balanceStartTime = Date.now()
+      
+      // Сначала пробуем получить из кэша
+      const ecosystemStats = dynamicEcosystemCache.getEcosystemStats()
+      
+      if (ecosystemStats.totalBalance > 0 && ecosystemStats.cacheAge < 5 * 60 * 1000) {
+        // Кэш свежий (< 5 минут) - используем его
+        totalPEcoins = ecosystemStats.totalBalance
+        console.log('✅ Использованы кэшированные балансы PEcoin')
+      } else {
+        // Кэш устарел - инициализируем асинхронно, но не блокируем ответ
+        console.log('🔄 Запуск фоновой загрузки балансов...')
+        
+        // Запускаем инициализацию в фоне без await
+        dynamicEcosystemCache.autoInitialize().catch(error => {
+          console.error('❌ Фоновая инициализация кэша:', error)
+        })
+        
+        // Пытаемся получить балансы напрямую с ограничением по времени
+        try {
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 3000) // максимум 3 секунды
+          )
+          
+          const balancePromise = (async () => {
+            const [teamsWallets, startupsWallets, staffWallets] = await Promise.all([
+              supabase.from("teams").select("wallet_address").not('wallet_address', 'is', null),
+              supabase.from("startups").select("wallet_address").not('wallet_address', 'is', null),
+              supabase.from("staff").select("wallet_address").not('wallet_address', 'is', null)
+            ])
+            
+            const allWallets = [
+              ...(teamsWallets.data?.map(t => t.wallet_address) || []),
+              ...(startupsWallets.data?.map(s => s.wallet_address) || []),
+              ...(staffWallets.data?.map(st => st.wallet_address) || [])
+            ].filter(Boolean)
+            
+            if (allWallets.length > 0) {
+              const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+              const balanceResponse = await fetch(`${baseUrl}/api/token-balances`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  wallets: allWallets,
+                  mint: "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
+                })
+              })
+              
+              if (balanceResponse.ok) {
+                const balanceData = await balanceResponse.json()
+                if (balanceData.balances) {
+                  return Object.values(balanceData.balances).reduce((sum: number, balance: any) => sum + (balance || 0), 0)
+                }
+              }
+            }
+            return 0
+          })()
+          
+          totalPEcoins = await Promise.race([balancePromise, timeoutPromise]) as number
+          
+        } catch (error) {
+          console.warn('⚠️ Загрузка балансов заняла слишком много времени, используем кэшированное значение')
+          totalPEcoins = ecosystemStats.totalBalance || 0
+        }
+      }
+      
+      balanceLoadingTime = Date.now() - balanceStartTime
+      
+    } catch (error) {
+      console.error('❌ Ошибка получения балансов:', error)
+      totalPEcoins = 0
+    }
+
+    // 3. АКТИВНОСТЬ - тоже получаем быстро
     const [recentTeams, recentStartups, recentStaff] = await Promise.all([
       supabase
         .from("teams")
@@ -56,65 +137,12 @@ export async function GET(request: NextRequest) {
         .limit(3)
     ])
 
-    // Если кэш не дал результатов, попробуем получить сумму балансов напрямую
-    let totalPEcoins = finalEcosystemStats.totalBalance || 0
-    
-    if (totalPEcoins === 0) {
-      try {
-        // Получаем все кошельки из базы данных
-        const [teamsWallets, startupsWallets, staffWallets] = await Promise.all([
-          supabase.from("teams").select("wallet_address").not('wallet_address', 'is', null),
-          supabase.from("startups").select("wallet_address").not('wallet_address', 'is', null),
-          supabase.from("staff").select("wallet_address").not('wallet_address', 'is', null)
-        ])
-        
-        const allWallets = [
-          ...(teamsWallets.data?.map(t => t.wallet_address) || []),
-          ...(startupsWallets.data?.map(s => s.wallet_address) || []),
-          ...(staffWallets.data?.map(st => st.wallet_address) || [])
-        ].filter(Boolean)
-        
-        if (allWallets.length > 0) {
-          // Запрашиваем балансы через API
-          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-          const balanceResponse = await fetch(`${baseUrl}/api/token-balances`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              wallets: allWallets,
-              mint: "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
-            })
-          })
-          
-          if (balanceResponse.ok) {
-            const balanceData = await balanceResponse.json()
-            if (balanceData.balances) {
-              totalPEcoins = Object.values(balanceData.balances).reduce((sum: number, balance: any) => sum + (balance || 0), 0)
-            }
-          }
-        }
-      } catch (error) {
-        console.error('❌ Ошибка получения балансов:', error)
-      }
-    }
-
-    // Формируем статистику с изменениями (пока что 0, можно добавить логику подсчета изменений за период)
-    const stats = {
-      teams: { 
-        count: teamsResult.count || 0, 
-        change: 0 // TODO: добавить подсчет изменений за последний период
-      },
-      startups: { 
-        count: startupsResult.count || 0, 
-        change: 0 
-      },
-      staff: { 
-        count: staffResult.count || 0, 
-        change: 0 
-      },
+    const finalStats = {
+      ...quickStats,
       totalPEcoins: { 
         count: totalPEcoins, 
-        change: 0 
+        change: 0,
+        loading: false
       }
     }
 
@@ -185,25 +213,33 @@ export async function GET(request: NextRequest) {
     })
 
     console.log('📊 Админ дашборд статистика:', {
-      teams: stats.teams.count,
-      startups: stats.startups.count, 
-      staff: stats.staff.count,
+      mode,
+      teams: finalStats.teams.count,
+      startups: finalStats.startups.count, 
+      staff: finalStats.staff.count,
       totalPEcoins,
-      ecosystemCacheStats: finalEcosystemStats,
+      balanceLoadingTime: `${balanceLoadingTime}ms`,
       recentActivityCount: recentActivity.length
     })
 
     return NextResponse.json({
       success: true,
-      stats,
-      recentActivity: recentActivity.slice(0, 6) // Берем только последние 6 записей
+      stats: finalStats,
+      recentActivity: recentActivity.slice(0, 6), // Берем только последние 6 записей
+      mode: 'full',
+      timing: {
+        balanceLoadingTime
+      }
     })
 
   } catch (error) {
-    console.error('❌ Admin dashboard stats API error:', error)
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to fetch dashboard stats'
-    }, { status: 500 })
+    console.error("❌ Ошибка API админ дашборда:", error)
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Internal server error" 
+      },
+      { status: 500 }
+    )
   }
 } 
