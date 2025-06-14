@@ -73,10 +73,10 @@ export function EntityListItem({ entity, index, pecoinMint, pecoinImg, alchemyAp
           </div>
 
           <div
-            className={`flex items-center ml-auto min-w-[110px] justify-end ${isTeam ? "bg-[#FFF8E8]" : "bg-[#E8F7F9]"} dark:bg-gray-700 px-3 py-2 rounded-full`}
+            className={`flex items-center ml-auto min-w-[70px] justify-end ${isTeam ? "bg-[#FFF8E8]" : "bg-[#E8F7F9]"} dark:bg-gray-700 pl-2 pr-3 py-2 rounded-full`}
             title={`PEcoin баланс: ${balance?.toLocaleString() || 0}`}
           >
-            <div className="w-5 h-5 mr-2 flex-shrink-0">
+            <div className="w-5 h-5 mr-1 flex-shrink-0">
               <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
             </div>
             <span className="font-bold text-base tabular-nums">

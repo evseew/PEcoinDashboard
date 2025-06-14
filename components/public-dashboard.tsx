@@ -348,14 +348,14 @@ export function PublicDashboard() {
              <div className="flex items-center justify-between w-full max-w-xs gap-2">
                {/* PEcoin Stats */}
                <motion.div 
-                 className="flex items-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-lg px-2.5 py-1.5 shadow-lg border border-white/20 dark:border-gray-700/30 min-w-0 flex-1"
+                 className="flex items-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-lg pl-1 pr-1.5 py-1.5 shadow-lg border border-white/20 dark:border-gray-700/30 min-w-0 flex-1"
                  initial={{ opacity: 0, x: -20 }}
                  animate={{ opacity: 1, x: 0 }}
                  transition={{ duration: 0.8, delay: 0.5 }}
                >
-                 <div className="relative mr-2 flex-shrink-0">
+                 <div className="relative mr-1 flex-shrink-0">
                    <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FFD166] to-[#FF6B6B] rounded-full blur opacity-75"></div>
-                   <div className="relative w-5 h-5 bg-white dark:bg-gray-800 rounded-full p-0.5">
+                   <div className="relative w-5 h-5 bg-white dark:bg-gray-800 rounded-full p-0">
                      <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full" />
                    </div>
                  </div>
