@@ -144,11 +144,12 @@ export function LandingPage() {
                 <h1 className="text-5xl md:text-7xl font-black leading-tight">
                   Добро пожаловать в{" "}
                   <span className="bg-gradient-to-r from-lime-400 via-green-400 to-emerald-400 bg-clip-text text-transparent animate-pulse">
+                    <Image src="/images/pecoin-token.png" alt="PEcoin" width={32} height={32} className="inline w-8 h-8 mr-2 rounded-full" />
                     PEcoin!
                   </span>
                 </h1>
                 <p className="text-xl md:text-2xl text-gray-300 leading-relaxed">
-                  Этим летом мы запускаем революционную механику — цифровая монета PEcoin станет частью лагерной игры.
+                  Этим летом мы запускаем революционную механику — цифровая монета <Image src="/images/pecoin-token.png" alt="PEcoin" width={20} height={20} className="inline w-5 h-5 mr-1 rounded-full" />PEcoin станет частью лагерной игры.
                   Это реальный токен на блокчейне Solana, который откроет детям мир технологий будущего.
                 </p>
                 <div className="flex items-center gap-3 text-lime-400 font-bold text-lg">
@@ -203,7 +204,7 @@ export function LandingPage() {
             {[
               { icon: Globe, label: "Блокчейн Solana", value: 100, suffix: "%" },
               { icon: Users, label: "Активных участников", value: 250, suffix: "+" },
-              { icon: Coins, label: "PEcoin в обороте", value: 10000, suffix: "" },
+              { icon: Coins, label: "🪙 PEcoin в обороте", value: 10000, suffix: "" },
               { icon: Trophy, label: "Успешных проектов", value: 50, suffix: "+" },
             ].map((stat, index) => (
               <Card
@@ -212,7 +213,11 @@ export function LandingPage() {
               >
                 <CardContent className="p-6 text-center">
                   <div className="bg-gradient-to-r from-lime-400 to-green-400 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                    <stat.icon className="w-8 h-8 text-black" />
+                    {stat.label.includes("PEcoin") ? (
+                      <Image src="/images/pecoin-token.png" alt="PEcoin" width={32} height={32} className="w-8 h-8 rounded-full" />
+                    ) : (
+                      <stat.icon className="w-8 h-8 text-black" />
+                    )}
                   </div>
                   <div className="text-3xl font-black text-lime-400 mb-2">
                     <AnimatedCounter target={stat.value} suffix={stat.suffix} />
@@ -233,6 +238,7 @@ export function LandingPage() {
               <h2 className="text-4xl md:text-6xl font-black text-white mb-8">
                 Что такое{" "}
                 <span className="bg-gradient-to-r from-lime-400 via-green-400 to-emerald-400 bg-clip-text text-transparent animate-pulse">
+                  <Image src="/images/pecoin-token.png" alt="PEcoin" width={32} height={32} className="inline w-8 h-8 mr-2 rounded-full" />
                   PEcoin?
                 </span>
               </h2>
@@ -245,7 +251,7 @@ export function LandingPage() {
                 <div className="grid md:grid-cols-2 gap-12 items-center">
                   <div className="space-y-8 text-gray-300 text-lg leading-relaxed">
                     <p className="text-xl md:text-2xl">
-                      <span className="text-lime-400 font-black text-3xl">PEcoin</span> — это не просто игровая валюта.
+                      <span className="text-lime-400 font-black text-3xl"><Image src="/images/pecoin-token.png" alt="PEcoin" width={32} height={32} className="inline w-8 h-8 mr-2 rounded-full" />PEcoin</span> — это не просто игровая валюта.
                       Это <span className="text-green-400 font-bold">реальный цифровой токен</span>, созданный на
                       ультрасовременном и быстром блокчейне <span className="text-purple-400 font-bold">Solana</span>.
                       Мы интегрировали настоящую <span className="text-blue-400 font-bold">Web3 технологию</span>, чтобы
@@ -255,7 +261,7 @@ export function LandingPage() {
                     <div className="bg-gradient-to-r from-blue-900/50 to-purple-900/50 backdrop-blur-sm rounded-2xl p-6 border border-blue-400/40 shadow-lg hover:shadow-blue-400/30 transition-shadow duration-300">
                       <p className="text-blue-300 text-center font-medium">
                         <Lock className="inline-block w-5 h-5 mr-2 text-blue-400" />
-                        PEcoin разработан как <span className="font-bold">образовательный инструмент</span>, а не
+                        <Image src="/images/pecoin-token.png" alt="PEcoin" width={16} height={16} className="inline w-4 h-4 mr-1 rounded-full" />PEcoin разработан как <span className="font-bold">образовательный инструмент</span>, а не
                         криптовалюта для биржевой торговли. Его главная цель — обучение основам децентрализованных
                         финансов (DeFi) и блокчейн-технологий в увлекательной и безопасной среде.
                       </p>
@@ -328,7 +334,7 @@ export function LandingPage() {
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-20">
               <h2 className="text-4xl md:text-6xl font-black text-white mb-6">
-                Как PEcoin{" "}
+                Как <Image src="/images/pecoin-token.png" alt="PEcoin" width={32} height={32} className="inline w-8 h-8 mr-2 rounded-full" />PEcoin{" "}
                 <span className="bg-gradient-to-r from-lime-400 via-green-400 to-emerald-400 bg-clip-text text-transparent">
                   трансформирует
                 </span>{" "}
@@ -357,7 +363,7 @@ export function LandingPage() {
                   <p className="text-gray-200 text-lg leading-relaxed">
                     Участники старше 10 лет погружаются в{" "}
                     <span className="text-lime-400 font-bold">полноценную Web3 экосистему</span>. Они получают{" "}
-                    <span className="text-green-400 font-bold">реальные цифровые токены PEcoin</span> за активность,
+                    <span className="text-green-400 font-bold">реальные цифровые токены <Image src="/images/pecoin-token.png" alt="PEcoin" width={16} height={16} className="inline w-4 h-4 mr-1 rounded-full" />PEcoin</span> за активность,
                     достижения и успешные проекты. Для управления активами используется{" "}
                     <span className="text-purple-400 font-bold">кошелёк Phantom</span> — профессиональный и безопасный
                     инструмент из мира Solana, адаптированный для образовательных целей.
@@ -413,7 +419,7 @@ export function LandingPage() {
                     Команды каждый день встречаются, обсуждают задачи и{" "}
                     <span className="text-pink-400 font-bold text-2xl md:text-3xl">шаг за шагом развивают</span>{" "}
                     свои проекты. За активность и успехи они зарабатывают{" "}
-                    <span className="text-lime-400 font-bold">PEcoin</span> — нашу лагерную монету.
+                    <span className="text-lime-400 font-bold"><Image src="/images/pecoin-token.png" alt="PEcoin" width={16} height={16} className="inline w-4 h-4 mr-1 rounded-full" />PEcoin</span> — нашу лагерную монету.
                   </p>
                                       <div className="bg-gradient-to-r from-lime-800/30 via-green-800/30 to-emerald-800/30 rounded-2xl p-8 md:p-12 border-2 border-lime-400/50 shadow-xl hover:shadow-lime-400/30 transition-shadow duration-300">
                       <p className="text-2xl md:text-3xl font-bold text-lime-300 text-center leading-snug">
@@ -454,7 +460,7 @@ export function LandingPage() {
                     <span className="text-green-400 font-bold">образовательного геймификации</span>.
                   </p>
                   <p className="text-xl text-center">
-                    PEcoin — это настоящий токен, но в лагере он используется{" "}
+                                          <Image src="/images/pecoin-token.png" alt="PEcoin" width={16} height={16} className="inline w-4 h-4 mr-1 rounded-full" />PEcoin — это настоящий токен, но в лагере он используется{" "}
                     <span className="text-lime-400 font-bold">исключительно как инструмент обучения и мотивации</span>.
                   </p>
                 </div>
@@ -516,7 +522,7 @@ export function LandingPage() {
                 <div className="space-y-6 text-gray-300 text-lg leading-relaxed">
                   <p className="text-xl text-center">
                     Единственное, что может понадобиться — помочь ребёнку установить{" "}
-                    <span className="text-purple-400 font-bold">приложение Phantom</span> (Web3 кошелёк для PEcoin).
+                    <span className="text-purple-400 font-bold">приложение Phantom</span> (Web3 кошелёк для <Image src="/images/pecoin-token.png" alt="PEcoin" width={16} height={16} className="inline w-4 h-4 mr-1 rounded-full" />PEcoin).
                   </p>
 
                   <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/40 rounded-3xl p-6 border border-blue-400/30">
@@ -612,7 +618,7 @@ export function LandingPage() {
                     
                     <div className="space-y-6 text-gray-300 text-lg leading-relaxed">
                       <p>
-                        В течение всей смены дети зарабатывают PEcoin — участвуя в командных играх, выполняя задания,
+                        В течение всей смены дети зарабатывают <Image src="/images/pecoin-token.png" alt="PEcoin" width={16} height={16} className="inline w-4 h-4 mr-1 rounded-full" />PEcoin — участвуя в командных играх, выполняя задания,
                         развивая свои стартапы и проявляя инициативу.
                       </p>
                       
@@ -623,7 +629,7 @@ export function LandingPage() {
                         <div className="space-y-4">
                           <div className="flex items-center gap-4">
                             <div className="w-3 h-3 bg-lime-400 rounded-full animate-pulse shadow-lg shadow-lime-400/50"></div>
-                            <span>сколько PEcoin заработала команда</span>
+                            <span>сколько <Image src="/images/pecoin-token.png" alt="PEcoin" width={16} height={16} className="inline w-4 h-4 mr-1 rounded-full" />PEcoin заработала команда</span>
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></div>
@@ -663,12 +669,12 @@ export function LandingPage() {
                         Финал смены — это <span className="text-orange-400 font-bold">Business Day</span>. Два дня команды работают со своими проектами по-настоящему.
                       </p>
                       <p>
-                        Дети открывают кафе, мастерские, магазины — всё, что придумали за смену. Зарабатывают настоящие PEcoin от других участников лагеря.
+                        Дети открывают кафе, мастерские, магазины — всё, что придумали за смену. Зарабатывают настоящие <Image src="/images/pecoin-token.png" alt="PEcoin" width={16} height={16} className="inline w-4 h-4 mr-1 rounded-full" />PEcoin от других участников лагеря.
                       </p>
                       
                       <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 rounded-2xl p-6 border border-yellow-400/20">
                         <p className="font-semibold text-yellow-300 mb-4">
-                          В конце все PEcoin распределяются:
+                          В конце все <Image src="/images/pecoin-token.png" alt="PEcoin" width={16} height={16} className="inline w-4 h-4 mr-1 rounded-full" />PEcoin распределяются:
                         </p>
                         <div className="space-y-4">
                           <div className="flex items-center gap-4">
@@ -721,7 +727,7 @@ export function LandingPage() {
                 {
                   question: "Нужно ли что-то платить?",
                   answer:
-                    "Абсолютно нет. Участие в PEcoin экосистеме полностью бесплатно — ни родители, ни дети не вносят никаких средств. Это образовательная программа, а не инвестиционный продукт.",
+                    "Абсолютно нет. Участие в <Image src=\"/images/pecoin-token.png\" alt=\"PEcoin\" width={16} height={16} className=\"inline w-4 h-4 mr-1 rounded-full\" />PEcoin экосистеме полностью бесплатно — ни родители, ни дети не вносят никаких средств. Это образовательная программа, а не инвестиционный продукт.",
                 },
                 {
                   question: "Ребёнок точно справится с технологиями?",
@@ -786,7 +792,7 @@ export function LandingPage() {
             </div>
             <p className="text-gray-400 text-lg mb-2">© 2024 Летний лагерь. Все права защищены.</p>
             <p className="text-lime-400 font-bold text-xl">
-              PEcoin — революционная Web3 образовательная программа на Solana blockchain
+              <Image src="/images/pecoin-token.png" alt="PEcoin" width={20} height={20} className="inline w-5 h-5 mr-2 rounded-full" />PEcoin — революционная Web3 образовательная программа на Solana blockchain
             </p>
             <div className="flex justify-center gap-6 mt-8">
               <div className="bg-gradient-to-r from-lime-400/20 to-green-400/20 rounded-full p-3 border border-lime-400/30">
