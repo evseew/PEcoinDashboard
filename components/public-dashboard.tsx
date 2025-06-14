@@ -208,9 +208,9 @@ export function PublicDashboard() {
         <div className="absolute top-8 right-1/3 w-1.5 h-1.5 bg-[#06D6A0]/40 rounded-full animate-pulse delay-1000"></div>
         <div className="absolute bottom-6 left-1/3 w-1 h-1 bg-[#FF6B6B]/30 rounded-full animate-pulse delay-500"></div>
         
-        <div className="relative px-3 sm:px-4 md:px-8 py-6 sm:py-8">
-          <div className="flex items-center justify-between w-full">
-            
+                <div className="relative px-3 sm:px-4 md:px-8 py-6 sm:py-8">
+          {/* Desktop Layout - горизонтальная структура */}
+          <div className="hidden md:flex items-center justify-between w-full">
             {/* Left section: Logo only */}
             <motion.div
               className="flex-shrink-0"
@@ -222,16 +222,16 @@ export function PublicDashboard() {
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.3 }}
               >
-                <img src="/images/camp-logo.png" alt="PlanetEnglish Camp" className="h-12 sm:h-14 md:h-16 w-auto object-contain" />
+                <img src="/images/camp-logo.png" alt="PlanetEnglish Camp" className="h-16 w-auto object-contain" />
               </motion.div>
             </motion.div>
             
-            {/* Center section: Title and PEcoin Stats on same line */}
-            <div className="flex-1 flex flex-col items-center">
-              <div className="flex items-center gap-4 lg:gap-8">
-                <div className="text-center">
+            {                /* Center section: Title and PEcoin Stats on same line */}
+            <div className="flex-1 flex flex-col items-center px-4">
+              <div className="flex items-center gap-6 max-w-4xl">
+                <div className="text-center flex-shrink-0">
                   <motion.h1 
-                    className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-display font-black bg-gradient-to-r from-[#FF6B6B] via-[#FFD166] to-[#06D6A0] bg-clip-text text-transparent leading-tight"
+                    className="text-3xl lg:text-4xl xl:text-5xl font-display font-black bg-gradient-to-r from-[#FF6B6B] via-[#FFD166] to-[#06D6A0] bg-clip-text text-transparent leading-tight"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.2 }}
@@ -239,7 +239,7 @@ export function PublicDashboard() {
                     StartUP Dashboard
                   </motion.h1>
                   <motion.p 
-                    className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-600 dark:text-gray-300 mt-1 font-medium px-2 sm:px-0"
+                    className="text-sm lg:text-base text-gray-600 dark:text-gray-300 mt-1 font-medium"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.4 }}
@@ -250,7 +250,7 @@ export function PublicDashboard() {
                 
                 {/* PEcoin Stats - on same line */}
                 <motion.div 
-                  className="hidden lg:flex items-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl px-5 py-3 shadow-lg border border-white/20 dark:border-gray-700/30"
+                  className="flex items-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl px-4 py-3 shadow-lg border border-white/20 dark:border-gray-700/30 flex-shrink-0"
                   whileHover={{ scale: 1.02, y: -2 }}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -258,13 +258,13 @@ export function PublicDashboard() {
                 >
                   <div className="relative mr-3">
                     <div className="absolute -inset-1 bg-gradient-to-r from-[#FFD166] to-[#FF6B6B] rounded-full blur opacity-75"></div>
-                    <div className="relative w-8 h-8 bg-white dark:bg-gray-800 rounded-full p-1">
+                    <div className="relative w-7 h-7 bg-white dark:bg-gray-800 rounded-full p-1">
                       <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full" />
                     </div>
                   </div>
                   <div>
                     <div className="flex items-baseline gap-1">
-                      <span className="font-bold text-lg text-gray-900 dark:text-white">
+                      <span className="font-bold text-base text-gray-900 dark:text-white">
                         {totalCoins !== null ? totalCoins.toLocaleString() : "..."}
                       </span>
                       <span className="text-xs font-medium text-gray-500 dark:text-gray-400">PEcoins</span>
@@ -277,62 +277,132 @@ export function PublicDashboard() {
 
             {/* Right section: Control buttons only */}
             <motion.div
-              className="flex items-center gap-2 sm:gap-3"
+              className="flex items-center gap-2 flex-shrink-0"
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
             >
               <Link href="/login/admin">
-                                  <motion.div
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="relative group"
-                    title="Admin Panel"
-                  >
-                    <div className="absolute -inset-1 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
-                    <div className="relative p-2 sm:p-3 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full shadow-lg">
-                      <UserCog className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                    </div>
-                  </motion.div>
+                <motion.div
+                  whileHover={{ scale: 1.05, rotate: 3 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="relative group"
+                  title="Admin Panel"
+                >
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
+                  <div className="relative p-2.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full shadow-lg">
+                    <UserCog className="h-4 w-4 text-white" />
+                  </div>
+                </motion.div>
               </Link>
 
               <motion.div
-                whileHover={{ scale: 1.1 }}
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="relative"
               >
-                <div className="p-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full shadow-lg border border-white/30 dark:border-gray-700/30">
+                <div className="p-0.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full shadow-lg border border-white/30 dark:border-gray-700/30">
                   <ThemeToggle />
                 </div>
               </motion.div>
             </motion.div>
           </div>
 
-          {/* Mobile PEcoin stats */}
-          <motion.div 
-            className="lg:hidden flex justify-center mt-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-          >
-            <div className="flex items-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl px-5 py-3 shadow-lg border border-white/20 dark:border-gray-700/30">
-              <div className="relative mr-3">
-                <div className="absolute -inset-1 bg-gradient-to-r from-[#FFD166] to-[#FF6B6B] rounded-full blur opacity-75"></div>
-                <div className="relative w-8 h-8 bg-white dark:bg-gray-800 rounded-full p-1">
-                  <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full" />
-                </div>
-              </div>
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="font-bold text-lg text-gray-900 dark:text-white">
-                    {totalCoins !== null ? totalCoins.toLocaleString() : "..."}
-                  </span>
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">PEcoins</span>
-                </div>
-                <span className="text-xs text-gray-500 dark:text-gray-400">in circulation</span>
-              </div>
+          {/* Mobile Layout - вертикальная структура */}
+          <div className="md:hidden flex flex-col items-center space-y-4">
+            {/* 1. Логотип по центру */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+            >
+              <motion.div 
+                whileHover={{ scale: 1.05 }}
+                transition={{ duration: 0.3 }}
+              >
+                <img src="/images/camp-logo.png" alt="PlanetEnglish Camp" className="h-28 w-auto object-contain max-w-sm" />
+              </motion.div>
+            </motion.div>
+
+            {/* 2. Заголовок по центру */}
+            <div className="text-center">
+              <motion.h1 
+                className="text-3xl sm:text-4xl font-display font-black bg-gradient-to-r from-[#FF6B6B] via-[#FFD166] to-[#06D6A0] bg-clip-text text-transparent leading-tight"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
+                StartUP Dashboard
+              </motion.h1>
+              <motion.p 
+                className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-1 font-medium px-4"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.4 }}
+              >
+                Track teams, startups, and PEcoin transactions
+              </motion.p>
             </div>
-          </motion.div>
+
+                         {/* 3. PEcoin статистика и кнопки управления в одну строку */}
+             <div className="flex items-center justify-between w-full max-w-xs gap-2">
+               {/* PEcoin Stats */}
+               <motion.div 
+                 className="flex items-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-lg px-2.5 py-1.5 shadow-lg border border-white/20 dark:border-gray-700/30 min-w-0 flex-1"
+                 initial={{ opacity: 0, x: -20 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 transition={{ duration: 0.8, delay: 0.5 }}
+               >
+                 <div className="relative mr-2 flex-shrink-0">
+                   <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FFD166] to-[#FF6B6B] rounded-full blur opacity-75"></div>
+                   <div className="relative w-5 h-5 bg-white dark:bg-gray-800 rounded-full p-0.5">
+                     <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full" />
+                   </div>
+                 </div>
+                 <div className="min-w-0">
+                   <div className="flex items-baseline gap-1">
+                     <span className="font-bold text-xs text-gray-900 dark:text-white truncate">
+                       {totalCoins !== null ? totalCoins.toLocaleString() : "..."}
+                     </span>
+                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400">PEcoin</span>
+                   </div>
+                   <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">in circulation</span>
+                 </div>
+               </motion.div>
+
+              {/* Control buttons */}
+              <motion.div
+                className="flex items-center gap-1.5 flex-shrink-0"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+              >
+                <Link href="/login/admin">
+                  <motion.div
+                    whileHover={{ scale: 1.05, rotate: 3 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="relative group"
+                    title="Admin Panel"
+                  >
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
+                    <div className="relative p-1.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full shadow-lg">
+                      <UserCog className="h-3.5 w-3.5 text-white" />
+                    </div>
+                  </motion.div>
+                </Link>
+
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="relative"
+                >
+                  <div className="p-0.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full shadow-lg border border-white/30 dark:border-gray-700/30">
+                    <ThemeToggle />
+                  </div>
+                </motion.div>
+              </motion.div>
+            </div>
+          </div>
         </div>
         
         {/* Bottom border with gradient */}
