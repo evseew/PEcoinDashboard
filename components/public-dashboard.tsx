@@ -13,7 +13,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Users, Rocket } from "lucide-react"
 import Link from "next/link"
 import { UserCog } from "lucide-react"
-import { useTokenImageUrl } from "@/hooks/token-image-provider"
 import { supabase } from "@/lib/supabaseClient"
 import { signedUrlCache } from "@/lib/signed-url-cache"
 
@@ -38,7 +37,7 @@ export function PublicDashboard() {
   const [balancesLoading, setBalancesLoading] = useState(false)
 
   const pecoinMint = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
-  const pecoinImg = useTokenImageUrl(pecoinMint, "/images/pecoin.png")
+  const pecoinImg = "/images/pecoin.png"
 
   useEffect(() => {
     const fetchData = async () => {
