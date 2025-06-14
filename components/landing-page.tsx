@@ -598,84 +598,106 @@ export function LandingPage() {
               </h2>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="grid lg:grid-cols-2 gap-12 items-start">
+              {/* Левый блок - Дашборд */}
               <div className="space-y-8">
-                <Card className="bg-gray-900 backdrop-blur-xl border border-lime-400/30 rounded-3xl hover:border-lime-400/50 transition-all duration-300">
-                  <CardContent className="p-10">
+                <Card className="bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 backdrop-blur-xl border border-lime-400/40 rounded-3xl shadow-2xl shadow-lime-400/10 hover:border-lime-400/60 transition-all duration-500 h-full">
+                  <CardContent className="p-8">
+                    <div className="flex items-center gap-4 mb-8">
+                      <div className="bg-gradient-to-r from-lime-400 to-green-400 rounded-xl p-3 shadow-lg shadow-lime-400/30">
+                        <TrendingUp className="w-8 h-8 text-black" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-lime-400">Следите за успехами</h3>
+                    </div>
+                    
                     <div className="space-y-6 text-gray-300 text-lg leading-relaxed">
                       <p>
                         В течение всей смены дети зарабатывают PEcoin — участвуя в командных играх, выполняя задания,
                         развивая свои стартапы и проявляя инициативу.
                       </p>
-                      <p>
-                        Вы сможете следить за успехами ребёнка через <span className="text-lime-400 font-bold">дашборд в реальном времени</span>. В нём вы увидите:
-                      </p>
-                      <div className="space-y-3 ml-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 bg-lime-400 rounded-full animate-pulse"></div>
-                          <span>сколько PEcoin заработала команда</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                          <span>как продвигается проект стартапа</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                          <span>насколько активно ребёнок участвует в лагерных заданиях и инициативах</span>
+                      
+                      <div className="bg-gradient-to-r from-lime-900/30 to-green-900/30 rounded-2xl p-6 border border-lime-400/20">
+                        <p className="font-semibold text-lime-300 mb-4">
+                          Дашборд в реальном времени покажет:
+                        </p>
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-4">
+                            <div className="w-3 h-3 bg-lime-400 rounded-full animate-pulse shadow-lg shadow-lime-400/50"></div>
+                            <span>сколько PEcoin заработала команда</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50"></div>
+                            <span>как продвигается проект стартапа</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse shadow-lg shadow-blue-400/50"></div>
+                            <span>активность ребёнка в заданиях</span>
+                          </div>
                         </div>
                       </div>
                     </div>
+                    
+                    <Link href="/dashboard" passHref>
+                      <Button className="w-full mt-8 bg-gradient-to-r from-lime-400 via-green-400 to-emerald-400 hover:from-lime-300 hover:via-green-300 hover:to-emerald-300 text-black font-bold py-4 rounded-2xl text-lg shadow-2xl shadow-lime-400/30 hover:shadow-lime-400/50 transition-all duration-500 hover:scale-105">
+                        <TrendingUp className="w-5 h-5 mr-3" />
+                        Открыть Live Dashboard
+                      </Button>
+                    </Link>
                   </CardContent>
                 </Card>
-                <Link href="/dashboard" passHref>
-                  <Button className="w-full bg-gradient-to-r from-lime-400 via-green-400 to-emerald-400 hover:from-lime-300 hover:via-green-300 hover:to-emerald-300 text-black font-bold py-6 rounded-2xl text-xl shadow-2xl shadow-lime-400/30 hover:shadow-lime-400/50 transition-all duration-500 hover:scale-105">
-                    <TrendingUp className="w-6 h-6 mr-3" />
-                    Открыть Live Dashboard
-                  </Button>
-                </Link>
               </div>
 
-              <div className="space-y-8">
-                <Card className="bg-gray-900 backdrop-blur-xl border border-yellow-400/30 rounded-3xl hover:border-yellow-400/50 transition-all duration-300">
-                  <CardContent className="p-10">
-                    <div className="flex items-center gap-4 mb-6">
-                      <div className="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-xl p-3">
-                        <Trophy className="w-10 h-10 text-black" />
+              {/* Правый блок - Business Day */}
+              <div>
+                <Card className="bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 backdrop-blur-xl border border-yellow-400/40 rounded-3xl shadow-2xl shadow-yellow-400/10 hover:border-yellow-400/60 transition-all duration-500 h-full">
+                  <CardContent className="p-8">
+                    <div className="flex items-center gap-4 mb-8">
+                      <div className="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-xl p-3 shadow-lg shadow-yellow-400/30">
+                        <Trophy className="w-8 h-8 text-black" />
                       </div>
                       <h3 className="text-2xl font-bold text-yellow-400">Финал смены</h3>
                     </div>
-                    <p className="text-gray-300 text-lg leading-relaxed mb-4">
-                      Финал смены — это <span className="text-orange-400 font-bold">Business Day</span>. Два дня команды работают со своими проектами по-настоящему.
-                    </p>
-                    <p className="text-gray-300 text-lg leading-relaxed mb-4">
-                      Дети открывают кафе, мастерские, магазины — всё, что придумали за смену. Зарабатывают настоящие PEcoin от других участников лагеря.
-                    </p>
-                    <p className="text-gray-300 text-lg leading-relaxed mb-4">
-                      В конце все PEcoin распределяются:
-                    </p>
-                    <div className="space-y-4 text-gray-300">
-                      <div className="flex items-center gap-4">
-                        <span className="text-3xl">🏆</span>
-                        <span className="text-lg">за личные достижения</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-3xl">🤝</span>
-                        <span className="text-lg">внутри команд</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-3xl">🚀</span>
-                        <span className="text-lg">по итогам стартапа</span>
+                    
+                    <div className="space-y-6 text-gray-300 text-lg leading-relaxed">
+                      <p>
+                        Финал смены — это <span className="text-orange-400 font-bold">Business Day</span>. Два дня команды работают со своими проектами по-настоящему.
+                      </p>
+                      <p>
+                        Дети открывают кафе, мастерские, магазины — всё, что придумали за смену. Зарабатывают настоящие PEcoin от других участников лагеря.
+                      </p>
+                      
+                      <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 rounded-2xl p-6 border border-yellow-400/20">
+                        <p className="font-semibold text-yellow-300 mb-4">
+                          В конце все PEcoin распределяются:
+                        </p>
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-4">
+                            <span className="text-3xl">🏆</span>
+                            <span className="text-lg">за личные достижения</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="text-3xl">🤝</span>
+                            <span className="text-lg">внутри команд</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="text-3xl">🚀</span>
+                            <span className="text-lg">по итогам стартапа</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-
-                <div className="bg-gray-900 rounded-3xl p-8 text-center border border-emerald-400/30 backdrop-blur-sm">
-                  <p className="text-xl font-bold text-emerald-400">
-                    В итоге каждый ребёнок получит собственный цифровой капитал, который сможет использовать на
-                    финальной NFT-ярмарке проектов.
-                  </p>
-                </div>
+              </div>
+            </div>
+            
+            {/* Итоговый результат */}
+            <div className="mt-12 text-center">
+              <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-8">
+                <p className="text-gray-300 text-xl leading-relaxed">
+                  🎯 Каждый ребёнок получит собственный цифровой капитал 💰, который сможет потратить на 
+                  <span className="text-lime-400 font-semibold">финальной ярмарке проектов</span> 🛍️✨
+                </p>
               </div>
             </div>
           </div>
