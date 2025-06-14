@@ -208,7 +208,7 @@ export function PublicDashboard() {
         <div className="absolute top-8 right-1/3 w-1.5 h-1.5 bg-[#06D6A0]/40 rounded-full animate-pulse delay-1000"></div>
         <div className="absolute bottom-6 left-1/3 w-1 h-1 bg-[#FF6B6B]/30 rounded-full animate-pulse delay-500"></div>
         
-        <div className="relative px-4 md:px-8 py-8">
+        <div className="relative px-3 sm:px-4 md:px-8 py-6 sm:py-8">
           <div className="flex items-center justify-between w-full">
             
             {/* Left section: Logo only */}
@@ -222,16 +222,16 @@ export function PublicDashboard() {
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.3 }}
               >
-                <img src="/images/camp-logo.png" alt="PlanetEnglish Camp" className="h-16 w-auto object-contain" />
+                <img src="/images/camp-logo.png" alt="PlanetEnglish Camp" className="h-12 sm:h-14 md:h-16 w-auto object-contain" />
               </motion.div>
             </motion.div>
             
             {/* Center section: Title and PEcoin Stats on same line */}
             <div className="flex-1 flex flex-col items-center">
-              <div className="flex items-center gap-8">
+              <div className="flex items-center gap-4 lg:gap-8">
                 <div className="text-center">
                   <motion.h1 
-                    className="text-4xl md:text-5xl lg:text-6xl font-display font-black bg-gradient-to-r from-[#FF6B6B] via-[#FFD166] to-[#06D6A0] bg-clip-text text-transparent"
+                    className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-display font-black bg-gradient-to-r from-[#FF6B6B] via-[#FFD166] to-[#06D6A0] bg-clip-text text-transparent leading-tight"
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.2 }}
@@ -239,7 +239,7 @@ export function PublicDashboard() {
                     StartUP Dashboard
                   </motion.h1>
                   <motion.p 
-                    className="text-base md:text-lg text-gray-600 dark:text-gray-300 mt-1 font-medium"
+                    className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-600 dark:text-gray-300 mt-1 font-medium px-2 sm:px-0"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.4 }}
@@ -252,7 +252,6 @@ export function PublicDashboard() {
                 <motion.div 
                   className="hidden lg:flex items-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl px-5 py-3 shadow-lg border border-white/20 dark:border-gray-700/30"
                   whileHover={{ scale: 1.02, y: -2 }}
-                  transition={{ duration: 0.2 }}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.5 }}
@@ -278,23 +277,23 @@ export function PublicDashboard() {
 
             {/* Right section: Control buttons only */}
             <motion.div
-              className="flex items-center gap-3"
+              className="flex items-center gap-2 sm:gap-3"
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
             >
               <Link href="/login/admin">
-                <motion.div
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="relative group"
-                  title="Admin Panel"
-                >
-                  <div className="absolute -inset-1 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
-                  <div className="relative p-3 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full shadow-lg">
-                    <UserCog className="h-5 w-5 text-white" />
-                  </div>
-                </motion.div>
+                                  <motion.div
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="relative group"
+                    title="Admin Panel"
+                  >
+                    <div className="absolute -inset-1 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
+                    <div className="relative p-2 sm:p-3 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full shadow-lg">
+                      <UserCog className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                    </div>
+                  </motion.div>
               </Link>
 
               <motion.div
