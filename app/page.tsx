@@ -1,5 +1,5 @@
-import { PublicDashboard } from "@/components/public-dashboard"
+import { LandingPage } from "../components/landing-page"
 
 export default function HomePage() {
-  return <PublicDashboard />
+  return <LandingPage />
 }

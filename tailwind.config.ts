@@ -11,6 +11,19 @@ const config: Config = {
   theme: {
   	extend: {
   		colors: {
+  			mint: {
+  				DEFAULT: "#6EE7B7",
+  				"50": "#F0FDF4",
+  				"100": "#DCFCE7",
+  				"200": "#BBF7D0",
+  				"300": "#86EFAC",
+  				"400": "#6EE7B7",
+  				"500": "#34D399",
+  				"600": "#10B981",
+  				"700": "#059669",
+  				"800": "#067655",
+  				"900": "#065F46",
+  			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
@@ -83,11 +96,30 @@ const config: Config = {
   				to: {
   					height: '0'
   				}
-  			}
+  			},
+			"move-lines": {
+				"0%": { transform: "translateY(-100%)" },
+				"100%": { transform: "translateY(100%)" },
+			},
+			"fast-pulse": {
+				"0%, 100%": {
+				  transform: "scale(1)",
+				  opacity: "1",
+				  "box-shadow": "0 0 0 0 rgba(167, 243, 208, 0.7)",
+				},
+				"50%": {
+				  transform: "scale(1.05)",
+				  opacity: "1",
+				  "box-shadow": "0 0 20px 10px rgba(167, 243, 208, 0)",
+				},
+			},
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+			"spin-slow": "spin 8s linear infinite",
+			"move-lines": "move-lines 20s linear infinite",
+			"fast-pulse": "fast-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
   		}
   	}
   },

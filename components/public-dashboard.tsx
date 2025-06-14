@@ -282,6 +282,20 @@ export function PublicDashboard() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
             >
+              <Link href="/">
+                <motion.div
+                  whileHover={{ scale: 1.05, rotate: 3 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="relative group"
+                  title="Back to Landing"
+                >
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
+                  <div className="relative p-2.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full shadow-lg">
+                    <UserCog className="h-4 w-4 text-white" />
+                  </div>
+                </motion.div>
+              </Link>
+
               <Link href="/login/admin">
                 <motion.div
                   whileHover={{ scale: 1.05, rotate: 3 }}
@@ -289,8 +303,8 @@ export function PublicDashboard() {
                   className="relative group"
                   title="Admin Panel"
                 >
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
-                  <div className="relative p-2.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full shadow-lg">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#06D6A0] to-[#118AB2] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
+                  <div className="relative p-2.5 bg-gradient-to-r from-[#06D6A0] to-[#118AB2] rounded-full shadow-lg">
                     <UserCog className="h-4 w-4 text-white" />
                   </div>
                 </motion.div>
@@ -377,6 +391,20 @@ export function PublicDashboard() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.6 }}
               >
+                <Link href="/">
+                  <motion.div
+                    whileHover={{ scale: 1.05, rotate: 3 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="relative group"
+                    title="Back to Landing"
+                  >
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
+                    <div className="relative p-1.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full shadow-lg">
+                      <UserCog className="h-3.5 w-3.5 text-white" />
+                    </div>
+                  </motion.div>
+                </Link>
+
                 <Link href="/login/admin">
                   <motion.div
                     whileHover={{ scale: 1.05, rotate: 3 }}
@@ -384,8 +412,8 @@ export function PublicDashboard() {
                     className="relative group"
                     title="Admin Panel"
                   >
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
-                    <div className="relative p-1.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full shadow-lg">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-[#06D6A0] to-[#118AB2] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
+                    <div className="relative p-1.5 bg-gradient-to-r from-[#06D6A0] to-[#118AB2] rounded-full shadow-lg">
                       <UserCog className="h-3.5 w-3.5 text-white" />
                     </div>
                   </motion.div>
