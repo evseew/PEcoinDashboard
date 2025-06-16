@@ -58,6 +58,9 @@ export function useAdminTeamMutations() {
         wallet_address: teamData.walletAddress,
         description: teamData.description,
         achievements: 0,
+        age_range_min: teamData.ageRangeMin,
+        age_range_max: teamData.ageRangeMax,
+        age_display: teamData.ageDisplay,
       }
       
       if (logoUrl) insertData.logo_url = logoUrl
@@ -113,6 +116,9 @@ export function useAdminTeamMutations() {
         name: teamData.name,
         wallet_address: teamData.walletAddress,
         description: teamData.description,
+        age_range_min: teamData.ageRangeMin,
+        age_range_max: teamData.ageRangeMax,
+        age_display: teamData.ageDisplay,
       }
       
       if (logoUrl) updateData.logo_url = logoUrl

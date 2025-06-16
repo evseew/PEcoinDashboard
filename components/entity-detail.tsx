@@ -14,6 +14,7 @@ import { motion } from "framer-motion"
 import { useTokenImageUrl } from "@/hooks/token-image-provider"
 import { supabase } from "@/lib/supabaseClient"
 import { signedUrlCache } from "@/lib/signed-url-cache"
+import { AgeDisplay } from "@/components/age-display"
 
 interface EntityDetailProps {
   entityType: string
@@ -168,6 +169,9 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
           logo,
           walletAddress: data.wallet_address,
           achievements: data.achievements,
+          ageDisplay: data.age_display,
+          ageRangeMin: data.age_range_min,
+          ageRangeMax: data.age_range_max,
         })
       } catch (err) {
         console.error("Ошибка загрузки данных:", err)
@@ -181,6 +185,9 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
           logo,
           walletAddress: data.wallet_address,
           achievements: data.achievements,
+          ageDisplay: data.age_display,
+          ageRangeMin: data.age_range_min,
+          ageRangeMax: data.age_range_max,
         })
       }
       setLoading(false)
@@ -397,9 +404,22 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
                       {entity.name}
                     </h1>
                   </div>
-                  <p className={`${isTeam ? "text-gray-800 dark:text-gray-200" : "text-gray-600 dark:text-gray-300"} text-lg`}>
+                  <p className={`${isTeam ? "text-gray-800 dark:text-gray-200" : "text-gray-600 dark:text-gray-300"} text-lg mb-3`}>
                     {entity.description}
                   </p>
+                  
+                  {/* Возраст для команд */}
+                  {isTeam && (entity.ageDisplay || entity.ageRangeMin) && (
+                    <div className="mt-3">
+                      <AgeDisplay
+                        ageDisplay={entity.ageDisplay}
+                        ageRangeMin={entity.ageRangeMin}
+                        ageRangeMax={entity.ageRangeMax}
+                        size="md"
+                        showIcon={true}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className={`neomorphic p-6 rounded-xl flex items-center ${bgColor}`}>
                   <motion.div

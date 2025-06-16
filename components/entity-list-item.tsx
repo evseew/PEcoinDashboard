@@ -2,6 +2,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { Users, Rocket, Trophy, Target } from "lucide-react"
 import { useNftCount } from "@/hooks/use-nft-count"
+import { AgeDisplay } from "@/components/age-display"
 
 interface EntityListItemProps {
   entity: any
@@ -71,6 +72,19 @@ export function EntityListItem({ entity, index, pecoinMint, pecoinImg, alchemyAp
               <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{entity.tagline}</p>
             )}
           </div>
+
+          {/* Возраст для команд */}
+          {isTeam && (entity.age_display || entity.age_range_min) && (
+            <div className="mr-3">
+              <AgeDisplay
+                ageDisplay={entity.age_display}
+                ageRangeMin={entity.age_range_min}
+                ageRangeMax={entity.age_range_max}
+                size="sm"
+                showIcon={true}
+              />
+            </div>
+          )}
 
           <div
             className={`flex items-center ml-auto min-w-[70px] justify-end ${isTeam ? "bg-[#FFF8E8]" : "bg-[#E8F7F9]"} dark:bg-gray-700 pl-2 pr-3 py-2 rounded-full`}

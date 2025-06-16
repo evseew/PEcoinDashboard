@@ -5,6 +5,7 @@ import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Upload, AlertCircle } from "lucide-react"
+import { AgeRangeSelector } from "@/components/age-range-selector"
 
 interface EntityFormModalProps {
   isOpen: boolean
@@ -21,6 +22,11 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
   const [description, setDescription] = useState(entity?.description || "")
   const [logo, setLogo] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(entity?.logo || null)
+  const [ageRange, setAgeRange] = useState({
+    min: entity?.ageRangeMin || 8,
+    max: entity?.ageRangeMax || 10,
+    display: entity?.ageDisplay || "8-10 y.o."
+  })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -31,6 +37,11 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
     setDescription(entity?.description || "")
     setLogo(null)
     setLogoPreview(entity?.logo || null)
+    setAgeRange({
+      min: entity?.ageRangeMin || 8,
+      max: entity?.ageRangeMax || 10,
+      display: entity?.ageDisplay || "8-10 y.o."
+    })
   }, [entity, isOpen])
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,6 +88,9 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
         walletAddress,
         description,
         logo: logo || logoPreview,
+        ageRangeMin: ageRange.min,
+        ageRangeMax: ageRange.max,
+        ageDisplay: ageRange.display,
       })
       onClose()
     } catch (error) {
@@ -215,6 +229,15 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
                     }`}
                   />
                 </div>
+
+                {/* Age Range - только для команд */}
+                {entityType === "team" && (
+                  <AgeRangeSelector
+                    value={ageRange}
+                    onChange={setAgeRange}
+                    error={errors.ageRange}
+                  />
+                )}
 
                 {errors.submit && (
                   <p className="mt-1 text-sm text-red-500 flex items-center">

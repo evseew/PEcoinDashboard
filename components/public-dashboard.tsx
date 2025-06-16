@@ -16,6 +16,7 @@ import { UserCog } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
 import { signedUrlCache } from "@/lib/signed-url-cache"
 
+
 // Получение signedUrl для логотипа с кэшированием
 async function getSignedUrl(storageKey: string | null): Promise<string | null> {
   return signedUrlCache.getSignedUrl(storageKey)
@@ -26,7 +27,7 @@ export function PublicDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [teams, setTeams] = useState<any[]>([])
   const [startups, setStartups] = useState<any[]>([])
-  const [teamSort, setTeamSort] = useState<string>("name")
+  const [teamSort, setTeamSort] = useState<string>("age")
   const [startupSort, setStartupSort] = useState<string>("name")
   const [activeTab, setActiveTab] = useState<string>("all")
   const isMobile = useMobile()
@@ -35,6 +36,7 @@ export function PublicDashboard() {
   const [totalCoins, setTotalCoins] = useState<number | null>(null)
   const [balances, setBalances] = useState<Record<string, number>>({})
   const [balancesLoading, setBalancesLoading] = useState(false)
+
 
   const pecoinMint = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
   const pecoinImg = "/images/pecoin.png"
@@ -80,7 +82,14 @@ export function PublicDashboard() {
           
           console.log(`[PublicDashboard] Signed URLs получены за ${Date.now() - signedUrlStart}ms`)
           
-          setTeams(teamsWithLogo)
+          // Сортируем команды по возрасту от младших к старшим по умолчанию
+          const sortedTeams = teamsWithLogo.sort((a, b) => {
+            const ageA = a.age_range_min || 999
+            const ageB = b.age_range_min || 999
+            return ageA - ageB
+          })
+          
+          setTeams(sortedTeams)
           setStartups(startupsWithLogo)
           
           console.log(`[PublicDashboard] Данные загружены за ${Date.now() - startTime}ms`)
@@ -173,8 +182,17 @@ export function PublicDashboard() {
         const balanceB = balances[b.wallet_address] || 0
         return balanceB - balanceA
       }))
+    } else if (sortBy === "age") {
+      setTeams([...teams].sort((a, b) => {
+        // Сортировка от младших к старшим
+        const ageA = a.age_range_min || 999 // Команды без возраста идут в конец
+        const ageB = b.age_range_min || 999
+        return ageA - ageB
+      }))
     }
   }
+
+
 
   const handleStartupSort = (sortBy: string) => {
     setStartupSort(sortBy)
@@ -540,17 +558,19 @@ export function PublicDashboard() {
               transition={{ duration: 0.4 }}
               className="h-full"
             >
-              <EntityList
-                title="Teams"
-                entities={teams}
-                type="teams"
-                currentSort={teamSort}
-                onSort={handleTeamSort}
-                icon="team"
-                compact={true}
-                balances={balances}
-                balancesLoading={balancesLoading}
-              />
+              <div className="space-y-4">
+                <EntityList
+                  title="Teams"
+                  entities={teams}
+                  type="teams"
+                  currentSort={teamSort}
+                  onSort={handleTeamSort}
+                  icon="team"
+                  compact={true}
+                  balances={balances}
+                  balancesLoading={balancesLoading}
+                />
+              </div>
             </motion.div>
           )}
 

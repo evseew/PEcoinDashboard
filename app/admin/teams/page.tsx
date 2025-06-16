@@ -14,6 +14,9 @@ interface Team {
   logo_url?: string | null
   description?: string
   achievements?: number
+  age_range_min?: number
+  age_range_max?: number
+  age_display?: string
 }
 
 export default function TeamsPage() {
@@ -55,6 +58,9 @@ export default function TeamsPage() {
         wallet_address: data.walletAddress,
         description: data.description,
         achievements: 0,
+        age_range_min: data.ageRangeMin,
+        age_range_max: data.ageRangeMax,
+        age_display: data.ageDisplay,
       }
       if (logoUrl) insertData.logo_url = logoUrl
       const { error } = await supabase.from("teams").insert([insertData]).select()
@@ -83,6 +89,9 @@ export default function TeamsPage() {
         name: data.name,
         wallet_address: data.walletAddress,
         description: data.description,
+        age_range_min: data.ageRangeMin,
+        age_range_max: data.ageRangeMax,
+        age_display: data.ageDisplay,
       }
       if (logoUrl) updateData.logo_url = logoUrl
       const { error } = await supabase.from("teams").update(updateData).eq("id", id).select()
@@ -124,19 +133,33 @@ export default function TeamsPage() {
         {error && <div className="text-red-500">{error}</div>}
         <EntityTable
           title="Teams"
-          entities={teams.map(team => ({
-            id: team.id,
-            name: team.name,
-            walletAddress: team.wallet_address,
-            logo: team.logo_url,
-            description: team.description,
-            balance: 0,
-          }))}
+          entities={teams.map(team => {
+            // Генерируем английский текст возраста
+            const ageDisplay = team.age_range_min && team.age_range_max 
+              ? (team.age_range_min === team.age_range_max 
+                  ? `${team.age_range_min} y.o.` 
+                  : `${team.age_range_min}-${team.age_range_max} y.o.`)
+              : team.age_display || 'Age not set'
+            
+            return {
+              id: team.id,
+              name: team.name,
+              walletAddress: team.wallet_address,
+              logo: team.logo_url,
+              description: team.description,
+              balance: 0,
+              ageDisplay: ageDisplay,
+              ageRangeMin: team.age_range_min,
+              ageRangeMax: team.age_range_max,
+            }
+          })}
           entityType="team"
           onCreateEntity={handleCreateTeam}
           onUpdateEntity={handleUpdateTeam}
           onDeleteEntity={handleDeleteTeam}
-          extraColumns={[]}
+          extraColumns={[
+            { key: "ageDisplay", label: "Age" }
+          ]}
           showBalance={false}
           isLoading={isLoading}
         />

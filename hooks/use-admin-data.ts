@@ -173,7 +173,10 @@ export function useAdminTeams() {
       
       const teamsData = (data || []).map(team => ({
         ...team,
-        achievements: team.achievements || 0
+        achievements: team.achievements || 0,
+        age_range_min: team.age_range_min,
+        age_range_max: team.age_range_max,
+        age_display: team.age_display
       }))
       
       // Кэшируем данные

@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: teams, error } = await supabase
       .from("teams")
-      .select("id, name, wallet_address, description, logo_url, achievements")
+      .select("id, name, wallet_address, description, logo_url, achievements, age_range_min, age_range_max, age_display")
       .order('name')
 
     if (error) {
@@ -24,7 +24,10 @@ export async function GET(request: NextRequest) {
       walletAddress: team.wallet_address,
       description: team.description,
       logoUrl: team.logo_url,
-      achievements: team.achievements
+      achievements: team.achievements,
+      ageRangeMin: team.age_range_min,
+      ageRangeMax: team.age_range_max,
+      ageDisplay: team.age_display
     }))
 
     return NextResponse.json({
