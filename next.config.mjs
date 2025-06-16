@@ -28,6 +28,19 @@ const nextConfig = {
       }
     ]
   },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Подавляем предупреждения Supabase о динамических импортах
+      config.ignoreWarnings = [
+        ...(config.ignoreWarnings || []),
+        {
+          module: /node_modules\/@supabase\/realtime-js/,
+          message: /Critical dependency: the request of a dependency is an expression/,
+        }
+      ]
+    }
+    return config
+  },
   async headers() {
     return [
       {

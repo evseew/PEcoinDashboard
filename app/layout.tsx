@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import "./globals.css"
 import { Mona_Sans as FontSans } from "next/font/google"
 import localFont from "next/font/local"
@@ -26,7 +26,6 @@ export const metadata: Metadata = {
   description: "Dashboard for PEcoin ecosystem with dynamic global caching",
   generator: "v0.dev",
   manifest: "/manifest.json",
-  themeColor: "#000000",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -43,6 +42,13 @@ export const metadata: Metadata = {
       { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
     ],
   },
+}
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1.0,
+  viewportFit: "cover"
 }
 
 export default function RootLayout({
@@ -68,10 +74,12 @@ export default function RootLayout({
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192x192.png" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
       </head>
-      <body className={cn("min-h-screen font-sans antialiased", fontSans.variable, fontDisplay.variable, inter.className)}>
+      <body className={cn("min-h-screen bg-background font-sans antialiased", fontSans.variable, fontDisplay.variable)}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <AuthProvider>
-            <TokenImageProvider>{children}</TokenImageProvider>
+            <TokenImageProvider>
+              {children}
+            </TokenImageProvider>
           </AuthProvider>
         </ThemeProvider>
         <script
