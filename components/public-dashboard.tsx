@@ -10,7 +10,7 @@ import { CampIcon } from "@/components/camp-icons"
 import { AnimatedBackground } from "@/components/animated-background"
 import { motion } from "framer-motion"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Users, Rocket } from "lucide-react"
+import { Users, Rocket, Home } from "lucide-react"
 import Link from "next/link"
 import { UserCog } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
@@ -291,7 +291,7 @@ export function PublicDashboard() {
                 >
                   <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
                   <div className="relative p-2.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full shadow-lg">
-                    <UserCog className="h-4 w-4 text-white" />
+                    <Home className="h-4 w-4 text-white" />
                   </div>
                 </motion.div>
               </Link>
@@ -400,7 +400,7 @@ export function PublicDashboard() {
                   >
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full blur opacity-75 group-hover:opacity-100 transition duration-300"></div>
                     <div className="relative p-1.5 bg-gradient-to-r from-[#FF6B6B] to-[#06D6A0] rounded-full shadow-lg">
-                      <UserCog className="h-3.5 w-3.5 text-white" />
+                      <Home className="h-3.5 w-3.5 text-white" />
                     </div>
                   </motion.div>
                 </Link>

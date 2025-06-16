@@ -140,7 +140,7 @@ export default function AdminLoginPage() {
         <div className="mt-6 text-center text-xs text-gray-500 dark:text-gray-400">
           <p>This page is restricted to admin users only.</p>
           <p className="mt-1">
-            <Link href="/" className="text-[#FF6B6B] hover:underline">
+            <Link href="/dashboard" className="text-[#FF6B6B] hover:underline">
               Return to public dashboard
             </Link>
           </p>

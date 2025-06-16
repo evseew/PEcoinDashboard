@@ -21,6 +21,7 @@ import {
   Rocket,
   Globe,
   Code,
+  BarChart3,
 } from "lucide-react"
 import Image from "next/image"
 
@@ -122,10 +123,13 @@ export function LandingPage() {
           </div>
           <Link href="/dashboard" passHref>
             <Button
-              className="bg-gradient-to-r from-lime-400 to-green-400 hover:from-lime-300 hover:to-green-300 text-black font-bold rounded-full px-8 py-3 shadow-lg shadow-lime-400/25 hover:shadow-lime-400/40 transition-all duration-300 hover:scale-105"
+              className="group relative bg-gradient-to-r from-lime-400 via-green-400 to-emerald-400 hover:from-lime-300 hover:via-green-300 hover:to-emerald-300 text-black font-bold rounded-full px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base shadow-2xl shadow-lime-400/30 hover:shadow-lime-400/50 transition-all duration-500 hover:scale-105 border border-lime-300/50 hover:border-lime-200 backdrop-blur-sm"
             >
-              <Network className="w-4 h-4 mr-2" />
-              Дашборд
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-lime-400 to-emerald-400 rounded-full blur opacity-30 group-hover:opacity-50 transition-opacity duration-500"></div>
+              <div className="relative flex items-center">
+                <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 group-hover:animate-pulse" />
+                Dashboard
+              </div>
             </Button>
           </Link>
         </div>
@@ -611,7 +615,7 @@ export function LandingPage() {
                   <CardContent className="p-6 sm:p-8">
                     <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
                       <div className="bg-gradient-to-r from-lime-400 to-green-400 rounded-xl p-2 sm:p-3 shadow-lg shadow-lime-400/30">
-                        <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-black" />
+                        <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-black" />
                       </div>
                       <h3 className="text-xl sm:text-2xl font-bold text-lime-400">Следите за успехами</h3>
                     </div>
@@ -645,7 +649,7 @@ export function LandingPage() {
                     
                     <Link href="/dashboard" passHref>
                       <Button className="w-full mt-6 sm:mt-8 bg-gradient-to-r from-lime-400 via-green-400 to-emerald-400 hover:from-lime-300 hover:via-green-300 hover:to-emerald-300 text-black font-bold py-3 sm:py-4 rounded-2xl text-base sm:text-lg shadow-2xl shadow-lime-400/30 hover:shadow-lime-400/50 transition-all duration-500 hover:scale-105">
-                        <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" />
+                        <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" />
                         Открыть Live Dashboard
                       </Button>
                     </Link>

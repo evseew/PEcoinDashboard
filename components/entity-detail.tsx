@@ -339,7 +339,7 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
       <header className={`py-6 px-4 md:px-8 border-b-4 ${isTeam ? "border-[#E63946] dark:border-[#E63946]/80" : borderColor}`}>
         <div className="container mx-auto flex items-center justify-between">
           <Link
-            href="/"
+            href="/dashboard"
             className="inline-flex items-center text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white font-medium text-lg transition-colors"
           >
             <ArrowLeft className="h-5 w-5 mr-2" />

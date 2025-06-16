@@ -117,7 +117,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </nav>
 
           <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <Link href="/">
+            <Link href="/dashboard">
               <button className="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 text-sm">
                 View Public Dashboard
               </button>
@@ -167,7 +167,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   <LogOut className="w-4 h-4 mr-2" />
                   Sign Out
                 </button>
-                <Link href="/" onClick={() => setMobileMenuOpen(false)}>
+                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
                   <button className="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 text-sm">
                     View Public Dashboard
                   </button>

@@ -39,10 +39,6 @@ const nextConfig = {
         ],
       },
     ]
-  },
-  // Настройка для edge functions
-  experimental: {
-    runtime: 'nodejs',
   }
 }
 
