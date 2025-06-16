@@ -67,24 +67,23 @@ export function EntityListItem({ entity, index, pecoinMint, pecoinImg, alchemyAp
           )}
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-display font-bold text-lg md:text-xl truncate group-hover:underline">{entity.name}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-display font-bold text-lg md:text-xl truncate group-hover:underline">{entity.name}</h3>
+              {/* Возраст для команд - менее заметный, сразу после названия */}
+              {isTeam && (entity.age_display || entity.age_range_min) && (
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-md">
+                  {entity.age_range_min && entity.age_range_max 
+                    ? (entity.age_range_min === entity.age_range_max 
+                        ? `${entity.age_range_min} y.o.` 
+                        : `${entity.age_range_min}-${entity.age_range_max} y.o.`)
+                    : entity.age_display || 'Age not set'}
+                </span>
+              )}
+            </div>
             {entity.tagline && (
               <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{entity.tagline}</p>
             )}
           </div>
-
-          {/* Возраст для команд */}
-          {isTeam && (entity.age_display || entity.age_range_min) && (
-            <div className="mr-3">
-              <AgeDisplay
-                ageDisplay={entity.age_display}
-                ageRangeMin={entity.age_range_min}
-                ageRangeMax={entity.age_range_max}
-                size="sm"
-                showIcon={true}
-              />
-            </div>
-          )}
 
           <div
             className={`flex items-center ml-auto min-w-[70px] justify-end ${isTeam ? "bg-[#FFF8E8]" : "bg-[#E8F7F9]"} dark:bg-gray-700 pl-2 pr-3 py-2 rounded-full`}
