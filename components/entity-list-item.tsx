@@ -67,11 +67,11 @@ export function EntityListItem({ entity, index, pecoinMint, pecoinImg, alchemyAp
           )}
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
               <h3 className="font-display font-bold text-lg md:text-xl truncate group-hover:underline">{entity.name}</h3>
-              {/* Возраст для команд - менее заметный, сразу после названия */}
+              {/* Возраст для команд - отдельной строкой на мобильных */}
               {isTeam && (entity.age_display || entity.age_range_min) && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-md flex-shrink-0 whitespace-nowrap">
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-md flex-shrink-0 whitespace-nowrap w-fit">
                   {entity.age_range_min && entity.age_range_max 
                     ? (entity.age_range_min === entity.age_range_max 
                         ? `${entity.age_range_min} y.o.` 
@@ -81,49 +81,51 @@ export function EntityListItem({ entity, index, pecoinMint, pecoinImg, alchemyAp
               )}
             </div>
             {entity.tagline && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{entity.tagline}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-1">{entity.tagline}</p>
             )}
           </div>
 
-          <div
-            className={`flex items-center ml-auto min-w-[70px] justify-end ${isTeam ? "bg-[#FFF8E8]" : "bg-[#E8F7F9]"} dark:bg-gray-700 pl-2 pr-3 py-2 rounded-full`}
-            title={`PEcoin баланс: ${balance?.toLocaleString() || 0}`}
-          >
-            <div className="w-5 h-5 mr-1 flex-shrink-0">
-              <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
+          <div className="flex items-center gap-2 ml-auto">
+            <div
+              className={`flex items-center min-w-[70px] justify-end ${isTeam ? "bg-[#FFF8E8]" : "bg-[#E8F7F9]"} dark:bg-gray-700 pl-2 pr-3 py-2 rounded-full`}
+              title={`PEcoin баланс: ${balance?.toLocaleString() || 0}`}
+            >
+              <div className="w-5 h-5 mr-1 flex-shrink-0">
+                <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
+              </div>
+              <span className="font-bold text-sm sm:text-base tabular-nums">
+                {balanceLoading ? "..." : (balance !== undefined ? balance.toLocaleString() : "0")}
+              </span>
             </div>
-            <span className="font-bold text-base tabular-nums">
-              {balanceLoading ? "..." : (balance !== undefined ? balance.toLocaleString() : "0")}
-            </span>
+
+            {/* NFT счетчик для команд (кубок) */}
+            {isTeam && (
+              <motion.div 
+                className="flex items-center bg-[#FFE4B5] dark:bg-[#FFE4B5]/20 px-2 py-1 rounded-full min-w-[50px] justify-center"
+                whileHover={{ scale: 1.05 }}
+                title={`${nftCount || 0} NFT в коллекции`}
+              >
+                <Trophy className="h-4 w-4 text-[#FFA41B] mr-1" />
+                <span className="text-sm font-bold text-[#FFA41B] tabular-nums">
+                  {nftLoading ? "..." : (nftCount || 0)}
+                </span>
+              </motion.div>
+            )}
+
+            {/* NFT счетчик для стартапов (цель) */}
+            {!isTeam && (
+              <motion.div 
+                className="flex items-center bg-[#D8F2F9] dark:bg-[#D8F2F9]/20 px-2 py-1 rounded-full min-w-[50px] justify-center"
+                whileHover={{ scale: 1.05 }}
+                title={`${nftCount || 0} NFT в коллекции`}
+              >
+                <Target className="h-4 w-4 text-[#3457D5] mr-1" />
+                <span className="text-sm font-bold text-[#3457D5] tabular-nums">
+                  {nftLoading ? "..." : (nftCount || 0)}
+                </span>
+              </motion.div>
+            )}
           </div>
-
-          {/* NFT счетчик для команд (кубок) */}
-          {isTeam && (
-            <motion.div 
-              className="ml-3 flex items-center bg-[#FFE4B5] dark:bg-[#FFE4B5]/20 px-2 py-1 rounded-full min-w-[50px] justify-center"
-              whileHover={{ scale: 1.05 }}
-              title={`${nftCount || 0} NFT в коллекции`}
-            >
-              <Trophy className="h-4 w-4 text-[#FFA41B] mr-1" />
-              <span className="text-sm font-bold text-[#FFA41B] tabular-nums">
-                {nftLoading ? "..." : (nftCount || 0)}
-              </span>
-            </motion.div>
-          )}
-
-          {/* NFT счетчик для стартапов (цель) */}
-          {!isTeam && (
-            <motion.div 
-              className="ml-3 flex items-center bg-[#D8F2F9] dark:bg-[#D8F2F9]/20 px-2 py-1 rounded-full min-w-[50px] justify-center"
-              whileHover={{ scale: 1.05 }}
-              title={`${nftCount || 0} NFT в коллекции`}
-            >
-              <Target className="h-4 w-4 text-[#3457D5] mr-1" />
-              <span className="text-sm font-bold text-[#3457D5] tabular-nums">
-                {nftLoading ? "..." : (nftCount || 0)}
-              </span>
-            </motion.div>
-          )}
         </div>
       </Link>
     </motion.div>
