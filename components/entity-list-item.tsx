@@ -71,7 +71,7 @@ export function EntityListItem({ entity, index, pecoinMint, pecoinImg, alchemyAp
               <h3 className="font-display font-bold text-lg md:text-xl truncate group-hover:underline">{entity.name}</h3>
               {/* Возраст для команд - менее заметный, сразу после названия */}
               {isTeam && (entity.age_display || entity.age_range_min) && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-md">
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-md flex-shrink-0 whitespace-nowrap">
                   {entity.age_range_min && entity.age_range_max 
                     ? (entity.age_range_min === entity.age_range_max 
                         ? `${entity.age_range_min} y.o.` 
