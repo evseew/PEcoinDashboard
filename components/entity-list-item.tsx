@@ -27,49 +27,71 @@ export function EntityListItem({ entity, index, pecoinMint, pecoinImg, alchemyAp
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, delay: index * 0.03 }}
-      whileHover={{ scale: 1.01, y: -1 }}
+      whileHover={{ scale: 1.02, y: -2 }}
       key={entity.id}
     >
       <Link href={`/${type.endsWith("s") ? type : `${type}s`}/${entity.id}`}>
         <div
-          className={`flex items-center p-5 min-h-[72px] rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 ${hoverBorder} transition-all duration-300 hover:shadow-sm group`}
+          className={`flex items-center p-4 sm:p-5 min-h-[80px] sm:min-h-[88px] rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 ${hoverBorder} transition-all duration-300 hover:shadow-lg group relative overflow-hidden`}
         >
+          {/* Background gradient effect on hover */}
+          <div className={`absolute inset-0 ${isTeam ? "bg-gradient-to-r from-[#E63946]/5 to-[#F76E11]/5" : "bg-gradient-to-r from-[#6ABECD]/5 to-[#3457D5]/5"} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+          
+          {/* Position indicator */}
           <div
-            className={`w-6 h-6 flex items-center justify-center ${iconBg} rounded-full mr-3 font-bold text-xs`}
+            className={`w-5 h-5 flex items-center justify-center bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded-full mr-3 sm:mr-4 font-medium text-xs z-10 opacity-60`}
           >
             {index + 1}
           </div>
 
-          {isTeam ? (
-            <div className="h-12 w-12 bg-gradient-to-br from-[#FFEED8] to-[#FFD8BE] rounded-md flex items-center justify-center mr-4 overflow-hidden">
-              {entity.logo ? (
-                <img
-                  src={entity.logo || "/placeholder.svg"}
-                  alt={`${entity.name} logo`}
-                  className="h-full w-full object-cover rounded-full"
-                />
-              ) : (
-                <Users className="h-6 w-6 text-[#663F18]" />
-              )}
-            </div>
-          ) : (
-            <div className="h-12 w-12 bg-gradient-to-br from-[#E8F7F9] to-[#D8F2F9] rounded-md flex items-center justify-center mr-4 overflow-hidden">
-              {entity.logo ? (
-                <img
-                  src={entity.logo || "/placeholder.svg"}
-                  alt={`${entity.name} logo`}
-                  className="h-full w-full object-cover rounded-full"
-                />
-              ) : (
-                <Rocket className="h-6 w-6 text-[#3457D5]" />
-              )}
-            </div>
-          )}
+          {/* Entity Logo - Enhanced with larger size */}
+          <motion.div 
+            className="relative mr-3 sm:mr-4 z-10"
+            whileHover={{ scale: 1.05 }}
+          >
+            {isTeam ? (
+              <div className="h-14 w-14 sm:h-16 sm:w-16 md:h-18 md:w-18 bg-gradient-to-br from-[#FFEED8] to-[#FFD8BE] rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden shadow-md relative">
+                {entity.logo ? (
+                  <>
+                    <img
+                      src={entity.logo || "/placeholder.svg"}
+                      alt={`${entity.name} logo`}
+                      className="h-full w-full object-cover rounded-xl sm:rounded-2xl"
+                    />
+                    {/* Gradient overlay on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#E63946]/20 to-[#F76E11]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl sm:rounded-2xl"></div>
+                  </>
+                ) : (
+                  <Users className="h-7 w-7 sm:h-8 sm:w-8 text-[#663F18]" />
+                )}
+              </div>
+            ) : (
+              <div className="h-14 w-14 sm:h-16 sm:w-16 md:h-18 md:w-18 bg-gradient-to-br from-[#E8F7F9] to-[#D8F2F9] rounded-xl sm:rounded-2xl flex items-center justify-center overflow-hidden shadow-md relative">
+                {entity.logo ? (
+                  <>
+                    <img
+                      src={entity.logo || "/placeholder.svg"}
+                      alt={`${entity.name} logo`}
+                      className="h-full w-full object-cover rounded-xl sm:rounded-2xl"
+                    />
+                    {/* Gradient overlay on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#6ABECD]/20 to-[#3457D5]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl sm:rounded-2xl"></div>
+                  </>
+                ) : (
+                  <Rocket className="h-7 w-7 sm:h-8 sm:w-8 text-[#3457D5]" />
+                )}
+              </div>
+            )}
+          </motion.div>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-              <h3 className="font-display font-bold text-lg md:text-xl truncate group-hover:underline">{entity.name}</h3>
-              {/* Возраст для команд - отдельной строкой на мобильных */}
+          {/* Entity Info */}
+          <div className="flex-1 min-w-0 z-10">
+            <div className="flex flex-col gap-1">
+              <h3 className={`font-display font-bold text-base sm:text-lg md:text-xl truncate group-hover:underline transition-colors duration-300 ${isTeam ? "group-hover:text-[#E63946]" : "group-hover:text-[#3457D5]"}`}>
+                {entity.name}
+              </h3>
+              
+              {/* Age display for teams - Enhanced design */}
               {isTeam && (entity.age_display || entity.age_range_min) && (
                 <span className="text-xs text-gray-500 dark:text-gray-400 font-normal bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-md flex-shrink-0 whitespace-nowrap w-fit">
                   {entity.age_range_min && entity.age_range_max 
@@ -79,53 +101,57 @@ export function EntityListItem({ entity, index, pecoinMint, pecoinImg, alchemyAp
                     : entity.age_display || 'Age not set'}
                 </span>
               )}
+              
+              {/* Description/tagline if available */}
+              {entity.description && (
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate leading-relaxed">
+                  {entity.description.length > 50 ? `${entity.description.substring(0, 50)}...` : entity.description}
+                </p>
+              )}
             </div>
-            {entity.tagline && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-1">{entity.tagline}</p>
-            )}
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
-            <div
-              className={`flex items-center min-w-[70px] justify-end ${isTeam ? "bg-[#FFF8E8]" : "bg-[#E8F7F9]"} dark:bg-gray-700 pl-2 pr-3 py-2 rounded-full`}
-              title={`PEcoin баланс: ${balance?.toLocaleString() || 0}`}
-            >
-              <div className="w-5 h-5 mr-1 flex-shrink-0">
-                <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
-              </div>
-              <span className="font-bold text-sm sm:text-base tabular-nums">
-                {balanceLoading ? "..." : (balance !== undefined ? balance.toLocaleString() : "0")}
-              </span>
-            </div>
+                     {/* Stats section - Clean design */}
+           <div className="flex items-center gap-6 ml-2 sm:ml-auto z-10">
+             {/* PEcoin Balance Block - Clean */}
+             <motion.div
+               className="flex items-center gap-2"
+               title={`PEcoin баланс: ${balance?.toLocaleString() || 0}`}
+               whileHover={{ scale: 1.05 }}
+             >
+               <div className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0">
+                 <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
+               </div>
+               <span className="font-bold text-base sm:text-lg md:text-xl tabular-nums text-gray-900 dark:text-gray-100">
+                 {balanceLoading ? "..." : (balance !== undefined ? balance.toLocaleString() : "0")}
+               </span>
+             </motion.div>
 
-            {/* NFT счетчик для команд (кубок) */}
-            {isTeam && (
-              <motion.div 
-                className="flex items-center bg-[#FFE4B5] dark:bg-[#FFE4B5]/20 px-2 py-1 rounded-full min-w-[50px] justify-center"
-                whileHover={{ scale: 1.05 }}
-                title={`${nftCount || 0} NFT в коллекции`}
-              >
-                <Trophy className="h-4 w-4 text-[#FFA41B] mr-1" />
-                <span className="text-sm font-bold text-[#FFA41B] tabular-nums">
-                  {nftLoading ? "..." : (nftCount || 0)}
-                </span>
-              </motion.div>
-            )}
-
-            {/* NFT счетчик для стартапов (цель) */}
-            {!isTeam && (
-              <motion.div 
-                className="flex items-center bg-[#D8F2F9] dark:bg-[#D8F2F9]/20 px-2 py-1 rounded-full min-w-[50px] justify-center"
-                whileHover={{ scale: 1.05 }}
-                title={`${nftCount || 0} NFT в коллекции`}
-              >
-                <Target className="h-4 w-4 text-[#3457D5] mr-1" />
-                <span className="text-sm font-bold text-[#3457D5] tabular-nums">
-                  {nftLoading ? "..." : (nftCount || 0)}
-                </span>
-              </motion.div>
-            )}
-          </div>
+             {/* NFT Count Block - Clean */}
+             {isTeam ? (
+               <motion.div 
+                 className="flex items-center bg-gradient-to-r from-[#FFE4B5] to-[#FFD700] dark:bg-[#FFE4B5]/20 px-2.5 py-1.5 rounded-full min-w-[50px] justify-center shadow-sm border border-[#FFA41B]/30"
+                 whileHover={{ scale: 1.05 }}
+                 title={`${nftCount || 0} NFT в коллекции`}
+               >
+                 <Trophy className="h-4 w-4 text-[#FFA41B] mr-1" />
+                 <span className="text-sm font-bold text-[#FFA41B] tabular-nums">
+                   {nftLoading ? "..." : (nftCount || 0)}
+                 </span>
+               </motion.div>
+             ) : (
+               <motion.div 
+                 className="flex items-center bg-gradient-to-r from-[#D8F2F9] to-[#B8E6F0] dark:bg-[#D8F2F9]/20 px-2.5 py-1.5 rounded-full min-w-[50px] justify-center shadow-sm border border-[#3457D5]/30"
+                 whileHover={{ scale: 1.05 }}
+                 title={`${nftCount || 0} NFT в коллекции`}
+               >
+                 <Target className="h-4 w-4 text-[#3457D5] mr-1" />
+                 <span className="text-sm font-bold text-[#3457D5] tabular-nums">
+                   {nftLoading ? "..." : (nftCount || 0)}
+                 </span>
+               </motion.div>
+             )}
+           </div>
         </div>
       </Link>
     </motion.div>

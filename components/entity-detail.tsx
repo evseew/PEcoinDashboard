@@ -14,7 +14,7 @@ import { motion } from "framer-motion"
 import { useTokenImageUrl } from "@/hooks/token-image-provider"
 import { supabase } from "@/lib/supabaseClient"
 import { signedUrlCache } from "@/lib/signed-url-cache"
-import { AgeDisplay } from "@/components/age-display"
+
 
 interface EntityDetailProps {
   entityType: string
@@ -359,9 +359,9 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
       {entity && (
         <main className="container mx-auto py-8 px-4 md:px-8">
           <div className="max-w-4xl mx-auto space-y-10">
-            {/* Top Information Block - Simplified */}
+            {/* Top Information Block - Enhanced Design with Large Images */}
             <motion.section
-              className={`camp-card ${borderColor} p-6 relative overflow-hidden`}
+              className={`camp-card ${borderColor} p-6 md:p-8 relative overflow-hidden`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
@@ -370,91 +370,105 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
               {isTeam && (
                 <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-gradient-to-br from-[#FF6B6B]/20 to-[#FFD166]/20 blur-xl"></div>
               )}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="flex-1">
-                  <div className="flex items-center mb-3">
+              
+              {/* Mobile-First Layout with Large Image */}
+              <div className="flex flex-col space-y-6">
+                {/* Entity Header with Large Image */}
+                <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6">
+                  {/* Large Entity Image/Logo - Main Focus */}
+                  <div className="flex-shrink-0">
                     {entity.logo ? (
-                      <div className="mr-3">
+                      <motion.div
+                        className="relative"
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.6 }}
+                        whileHover={{ scale: 1.05 }}
+                      >
                         <img
                           src={entity.logo}
                           alt={entity.name + " logo"}
-                          className="h-16 w-16 object-cover rounded-full border-2 border-gray-200 dark:border-gray-700 bg-white"
+                          className="w-32 h-32 sm:w-40 sm:h-40 md:w-40 md:h-40 lg:w-48 lg:h-48 object-cover rounded-2xl md:rounded-3xl border-2 md:border-4 border-white dark:border-gray-700 shadow-xl md:shadow-2xl bg-white"
                         />
-                      </div>
-                    ) : isTeam ? (
-                      <div className="mr-3">
-                        <motion.div
-                          className={`bg-gradient-to-br ${bgGradient} p-3 rounded-full`}
-                          whileHover={{ rotate: 10, scale: 1.1 }}
-                        >
-                          <Heart className="h-6 w-6 text-white" />
-                        </motion.div>
-                      </div>
+                        {/* Gradient overlay for better image integration */}
+                        <div className={`absolute inset-0 rounded-2xl md:rounded-3xl bg-gradient-to-br ${bgGradient} opacity-0 hover:opacity-20 transition-opacity duration-300`}></div>
+                      </motion.div>
                     ) : (
-                      <div className="mr-3">
-                        <motion.div
-                          className={`bg-gradient-to-br ${bgGradient} p-3 rounded-full`}
-                          whileHover={{ rotate: 10 }}
-                        >
-                          <Rocket className="h-6 w-6 text-white" />
-                        </motion.div>
-                      </div>
+                      <motion.div
+                        className={`w-32 h-32 sm:w-40 sm:h-40 md:w-40 md:h-40 lg:w-48 lg:h-48 bg-gradient-to-br ${bgGradient} rounded-2xl md:rounded-3xl flex items-center justify-center shadow-xl md:shadow-2xl`}
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.6 }}
+                        whileHover={{ scale: 1.05, rotate: 5 }}
+                      >
+                        {isTeam ? (
+                          <Heart className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 text-white" />
+                        ) : (
+                          <Rocket className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 text-white" />
+                        )}
+                      </motion.div>
                     )}
-                    <h1 className={`text-3xl md:text-4xl font-display font-bold bg-gradient-to-r ${bgGradient} bg-clip-text text-transparent`}>
-                      {entity.name}
-                    </h1>
                   </div>
-                  <p className={`${isTeam ? "text-gray-800 dark:text-gray-200" : "text-gray-600 dark:text-gray-300"} text-lg mb-3`}>
-                    {entity.description}
-                  </p>
-                  
-                  {/* Возраст для команд */}
-                  {isTeam && (entity.ageDisplay || entity.ageRangeMin) && (
-                    <div className="mt-3">
-                      <AgeDisplay
-                        ageDisplay={entity.ageDisplay}
-                        ageRangeMin={entity.ageRangeMin}
-                        ageRangeMax={entity.ageRangeMax}
-                        size="md"
-                        showIcon={true}
-                      />
+
+                  {/* Entity Info - Main Focus */}
+                  <div className="flex-1 text-center md:text-left flex flex-col justify-center space-y-3">
+                    <div>
+                      <motion.h1 
+                        className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-display font-bold bg-gradient-to-r ${bgGradient} bg-clip-text text-transparent leading-tight`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                      >
+                        {entity.name}
+                      </motion.h1>
+                      
+                      {/* Age for teams - Right under the name */}
+                      {isTeam && (entity.ageDisplay || entity.ageRangeMin) && (
+                        <motion.div
+                          className="flex justify-center md:justify-start mt-2"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6, delay: 0.3 }}
+                        >
+                          <span className="text-sm text-gray-500 dark:text-gray-400 font-normal bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md whitespace-nowrap">
+                            {entity.ageRangeMin && entity.ageRangeMax 
+                              ? (entity.ageRangeMin === entity.ageRangeMax 
+                                  ? `${entity.ageRangeMin} y.o.` 
+                                  : `${entity.ageRangeMin}-${entity.ageRangeMax} y.o.`)
+                              : entity.ageDisplay || 'Age not set'}
+                          </span>
+                        </motion.div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className={`neomorphic p-6 rounded-xl flex items-center ${bgColor}`}>
-                  <motion.div
-                    className="mr-4"
-                    whileHover={{ rotate: 10 }}
-                    animate={{ scale: [1, 1.05, 1], rotate: [0, 2, 0] }}
-                    transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, repeatType: "reverse" }}
+                    
+                    <motion.p 
+                      className={`${isTeam ? "text-gray-800 dark:text-gray-200" : "text-gray-600 dark:text-gray-300"} text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: 0.4 }}
+                    >
+                      {entity.description}
+                    </motion.p>
+                  </div>
+
+                  {/* PEcoin Balance - Right Side, Large & Prominent */}
+                  <motion.div 
+                    className="flex-shrink-0 flex flex-col items-center md:items-end text-center md:text-right justify-center"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, delay: 0.5 }}
                   >
-                    <div className="w-12 h-12">
-                      <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0">
+                        <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
+                      </div>
+                      <span className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-display font-bold text-gray-900 dark:text-gray-100 tabular-nums leading-none">
+                        {typeof entity.balance === 'number' ? entity.balance.toLocaleString() : "..."}
+                      </span>
                     </div>
                   </motion.div>
-                  <span className={`text-4xl font-display font-bold bg-gradient-to-r ${bgGradient} bg-clip-text text-transparent`}>
-                    {typeof entity.balance === 'number' ? entity.balance.toLocaleString() : "..."}
-                  </span>
                 </div>
               </div>
-              {/* Team-specific decorative elements */}
-              {isTeam && (
-                <div className="mt-6 flex justify-center">
-                  <div className="flex space-x-2">
-                    {[...Array(5)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6B6B] to-[#FFD166] flex items-center justify-center"
-                        initial={{ scale: 0.8, opacity: 0.5 }}
-                        animate={{ scale: [0.8, 1, 0.8], opacity: [0.5, 1, 0.5] }}
-                        transition={{ duration: 2, delay: i * 0.3, repeat: Number.POSITIVE_INFINITY }}
-                      >
-                        <Sparkles className="h-4 w-4 text-white" />
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </motion.section>
 
             {/* NFT Section */}
