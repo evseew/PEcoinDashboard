@@ -60,78 +60,77 @@ class DynamicEcosystemCache {
   }
 
   /**
-   * Получение актуального списка участников из API
+   * Получение актуального списка участников напрямую из базы данных
    */
   async refreshParticipants(): Promise<void> {
     console.log(`🔄 Обновление списка участников...`)
     
     try {
       const participants: DynamicParticipant[] = []
-      const baseUrl = getBaseUrl()
       
-      // Получаем команды
-      const teamsResponse = await fetch(`${baseUrl}/api/entities/teams`)
-      if (teamsResponse.ok) {
-        const teamsData = await teamsResponse.json()
-        if (teamsData.data) {
-          teamsData.data.forEach((team: any) => {
-            if (team.walletAddress) {
-              participants.push({
-                walletAddress: team.walletAddress,
-                type: 'team',
-                name: team.name || `Team ${team.id}`,
-                id: team.id
-              })
-            }
+      // Импортируем Supabase клиент
+      const { supabase } = await import('@/lib/supabaseClient')
+      
+      // Получаем команды напрямую из БД
+      const { data: teams } = await supabase
+        .from('teams')
+        .select('id, name, wallet_address')
+        .not('wallet_address', 'is', null)
+      
+      if (teams) {
+        teams.forEach((team: any) => {
+          participants.push({
+            walletAddress: team.wallet_address,
+            type: 'team',
+            name: team.name || `Team ${team.id}`,
+            id: team.id
           })
-        }
+        })
       }
       
-      // Получаем стартапы  
-      const startupsResponse = await fetch(`${baseUrl}/api/entities/startups`)
-      if (startupsResponse.ok) {
-        const startupsData = await startupsResponse.json()
-        if (startupsData.data) {
-          startupsData.data.forEach((startup: any) => {
-            if (startup.walletAddress) {
-              participants.push({
-                walletAddress: startup.walletAddress,
-                type: 'startup', 
-                name: startup.name || `Startup ${startup.id}`,
-                id: startup.id
-              })
-            }
+      // Получаем стартапы напрямую из БД
+      const { data: startups } = await supabase
+        .from('startups')
+        .select('id, name, wallet_address')
+        .not('wallet_address', 'is', null)
+      
+      if (startups) {
+        startups.forEach((startup: any) => {
+          participants.push({
+            walletAddress: startup.wallet_address,
+            type: 'startup',
+            name: startup.name || `Startup ${startup.id}`,
+            id: startup.id
           })
-        }
+        })
       }
       
-      // Получаем сотрудников
-      const staffResponse = await fetch(`${baseUrl}/api/entities/staff`)
-      if (staffResponse.ok) {
-        const staffData = await staffResponse.json()
-        if (staffData.data) {
-          staffData.data.forEach((staff: any) => {
-            if (staff.walletAddress) {
-              participants.push({
-                walletAddress: staff.walletAddress,
-                type: 'staff',
-                name: staff.name || `Staff ${staff.id}`,
-                id: staff.id
-              })
-            }
+      // Получаем сотрудников напрямую из БД
+      const { data: staff } = await supabase
+        .from('staff')
+        .select('id, name, wallet_address')
+        .not('wallet_address', 'is', null)
+      
+      if (staff) {
+        staff.forEach((member: any) => {
+          participants.push({
+            walletAddress: member.wallet_address,
+            type: 'staff',
+            name: member.name || `Staff ${member.id}`,
+            id: member.id
           })
-        }
+        })
       }
       
       // Обновляем список участников
       this.ecosystemData.participants = participants
       this.ecosystemData.lastParticipantsRefresh = Date.now()
       
-      const teams = participants.filter(p => p.type === 'team').length
-      const startups = participants.filter(p => p.type === 'startup').length
-      const staff = participants.filter(p => p.type === 'staff').length
+      const teams_count = participants.filter(p => p.type === 'team').length
+      const startups_count = participants.filter(p => p.type === 'startup').length
+      const staff_count = participants.filter(p => p.type === 'staff').length
       
-      console.log(`✅ Обновлен список участников: ${participants.length} (${teams} команд, ${startups} стартапов, ${staff} сотрудников)`)
+      console.log(`✅ Обновлен список участников: ${participants.length} (${teams_count} команд, ${startups_count} стартапов, ${staff_count} сотрудников)`)
       
     } catch (error) {
       console.error(`❌ Ошибка получения участников:`, error)

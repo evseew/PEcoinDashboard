@@ -350,6 +350,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Wallet address is required" }, { status: 400 });
     }
 
+    // Проверяем инициализацию экосистемы в самом начале
+    let participants = dynamicEcosystemCache.getAllParticipants()
+    if (participants.length === 0) {
+      console.log('[PEcoin History API] 🚀 Экосистема не инициализирована, запускаем инициализацию...')
+      try {
+        await dynamicEcosystemCache.refreshParticipants()
+        participants = dynamicEcosystemCache.getAllParticipants()
+        console.log(`[PEcoin History API] ✅ Предзагружено ${participants.length} участников`)
+      } catch (error) {
+        console.error('[PEcoin History API] ❌ Ошибка предзагрузки участников:', error)
+      }
+    }
+
     // Создаем ключ кэша с учетом всех параметров
     const cacheKey = `tx-history:${walletAddress}:limit:${requestedLimit}${beforeSignature ? `:before:${beforeSignature}` : ''}`
     
@@ -418,15 +431,7 @@ export async function POST(request: Request) {
     processedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
     // 6. Проверяем и обогащаем транзакции именами участников
-    const participants = dynamicEcosystemCache.getAllParticipants()
-    if (participants.length === 0) {
-      console.log('[PEcoin History API] ⚠️ Экосистема пуста, инициализируем участников...')
-      try {
-        await dynamicEcosystemCache.refreshParticipants()
-      } catch (error) {
-        console.error('[PEcoin History API] ❌ Ошибка инициализации участников:', error)
-      }
-    }
+    // Переиспользуем уже инициализированных участников
     
     const enrichedTransactions = processedTransactions.map(tx => {
       const senderInfo = walletNameResolver.getNameForWallet(tx.sender)
