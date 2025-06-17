@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Connection, PublicKey } from "@solana/web3.js"; // Используем Connection
-import { getAlchemyKey } from '@/lib/alchemy/solana'
+import { getAlchemyKey, getAlchemyUrl } from '@/lib/alchemy/solana'
 import { serverCache } from '@/lib/server-cache'
 import { walletNameResolver } from "@/lib/wallet-name-resolver"
 import { dynamicEcosystemCache } from "@/lib/dynamic-ecosystem-cache"
@@ -9,21 +9,19 @@ import { dynamicEcosystemCache } from "@/lib/dynamic-ecosystem-cache"
 const PECOIN_MINT = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"; // PEcoin mint address
 const TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"; // Token-2022 Program ID
 
-// Используем переменную окружения для Alchemy API ключа
-const ALCHEMY_URL = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
+// Используем правильную конфигурацию Alchemy
 
 let connection: Connection | undefined;
 
 function getSolanaConnection(): Connection {
   if (!connection) {
+    const ALCHEMY_URL = getAlchemyUrl();
     if (!ALCHEMY_URL) {
-      console.error("!!!!!!!!!! NEXT_PUBLIC_ALCHEMY_API_KEY не настроена! !!!!!!!!!!");
-      throw new Error("NEXT_PUBLIC_ALCHEMY_API_KEY is not configured.");
+      console.error("!!!!!!!!!! Alchemy URL не может быть получен! !!!!!!!!!!");
+      throw new Error("Alchemy URL configuration is missing.");
     }
     try {
-      // Проверяем, полный ли это URL или только ключ
-      const urlToConnect = ALCHEMY_URL.startsWith("https://") ? ALCHEMY_URL : `https://solana-mainnet.g.alchemy.com/v2/${ALCHEMY_URL}`;
-      connection = new Connection(urlToConnect, "confirmed");
+      connection = new Connection(ALCHEMY_URL, "confirmed");
       console.log("[API/Connection] Solana connection established via Alchemy.");
     } catch (e) {
       console.error("[API/Connection] Failed to create Solana connection:", e);

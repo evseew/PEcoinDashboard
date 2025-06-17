@@ -21,6 +21,7 @@ class ServerCache {
     WALLET_INFO: 5 * 60 * 1000,        // 5 минут - общая информация кошелька
     TRANSACTION_HISTORY: 2 * 60 * 1000, // 2 минуты - история транзакций 
     TRANSACTION_HISTORY_EMPTY: 30 * 1000, // 30 секунд - пустая история (кошелек без транзакций)
+    NFT_TRANSACTIONS: 1 * 60 * 1000,   // 1 минута - NFT транзакции
   }
 
   /**

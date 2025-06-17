@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Connection, PublicKey } from '@solana/web3.js'
 import { serverCache, ServerCache } from '@/lib/server-cache'
+import { getAlchemyUrl } from '@/lib/alchemy/solana'
 
-const ALCHEMY_URL = process.env.ALCHEMY_URL || "https://solana-mainnet.g.alchemy.com/v2/VYK2v9vubZLxKwE9-ASUeQC6b1-zaVb1"
+const ALCHEMY_URL = getAlchemyUrl()
 const connection = new Connection(ALCHEMY_URL, 'confirmed')
 
 interface NFTTransaction {
@@ -63,7 +64,7 @@ async function getNFTTransactions(walletAddress: string, limit: number = 10): Pr
     
     // Кэширование
     const cacheKey = `limit:${limit}|wallet:${walletAddress}`
-    const cachedData = await getCachedData('NFT_TRANSACTIONS', cacheKey)
+    const cachedData = getCachedData('NFT_TRANSACTIONS', cacheKey)
     if (cachedData) {
       console.log('🎯 Cache HIT: nft-transactions:', cacheKey)
       return cachedData
@@ -119,7 +120,7 @@ async function getNFTTransactions(walletAddress: string, limit: number = 10): Pr
     console.log(`[getNFTTransactions] 🎯 Итого найдено NFT транзакций: ${sortedTransactions.length}`)
     
     // Кэшируем результат
-    await setCachedData('NFT_TRANSACTIONS', cacheKey, sortedTransactions, 60) // 1 минута
+    setCachedData('NFT_TRANSACTIONS', cacheKey, sortedTransactions, 1) // 1 минута
     
     return sortedTransactions
     
