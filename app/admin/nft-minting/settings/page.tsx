@@ -177,23 +177,40 @@ export default function CollectionSettingsPage() {
                         </div>
                       </div>
                       
-                      {/* Delete Button */}
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to delete "${collection.name}" collection?`)) {
-                            toast({
-                              title: "Collection Deleted",
-                              description: "The collection has been removed from your library.",
-                            })
-                            // TODO: Implement actual deletion logic
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* View NFTs Button */}
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 border-emerald-200"
+                          onClick={() => {
+                            // TODO: Открыть модалку или страницу с NFT из коллекции
+                            console.log(`View NFTs in collection ${collection.id}`)
+                          }}
+                        >
+                          <ImageIcon className="h-4 w-4 mr-1" />
+                          View NFTs ({collection.minted})
+                        </Button>
+                        
+                        {/* Delete Button */}
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to delete "${collection.name}" collection?`)) {
+                              toast({
+                                title: "Collection Deleted",
+                                description: "The collection has been removed from your library.",
+                              })
+                              // TODO: Implement actual deletion logic
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">

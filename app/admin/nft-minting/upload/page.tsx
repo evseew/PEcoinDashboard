@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -84,15 +85,25 @@ const availableCollections = [
 ]
 
 export default function NFTUploadPage() {
+  const searchParams = useSearchParams()
+  const preselectedCollectionId = searchParams.get('collection')
+  
   const [dragActive, setDragActive] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
-  const [selectedCollection, setSelectedCollection] = useState('')
+  const [selectedCollection, setSelectedCollection] = useState(preselectedCollectionId || '')
   const [defaultRecipient, setDefaultRecipient] = useState('')
   const [defaultCopies, setDefaultCopies] = useState(1)
   const [isMinting, setIsMinting] = useState(false)
   const [mintingProgress, setMintingProgress] = useState<MintingProgress | null>(null)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Автоматически выбираем коллекцию из URL параметра
+  useEffect(() => {
+    if (preselectedCollectionId && availableCollections.find(c => c.id === preselectedCollectionId)) {
+      setSelectedCollection(preselectedCollectionId)
+    }
+  }, [preselectedCollectionId])
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
