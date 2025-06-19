@@ -93,6 +93,34 @@ const mintingHistory = [
     leafIndex: 46,
     cost: 0.00025,
     confirmations: 456
+  },
+  {
+    id: 'mint_006',
+    timestamp: '2024-01-23 14:25:30',
+    collection: 'Team Avatars v2',
+    nftName: 'Team Member cNFT #11',
+    recipient: '3F2X1z0A9s8D7f6G5h4J3k2L1m0N9b8V7c6X5z4A3s2D1f0G9h8J7',
+    status: 'failed',
+    transactionHash: null,
+    treeAddress: '5N8T2b3H8g9M3s1A7q4R5e6W7t8Y9u0I',
+    leafIndex: null,
+    cost: 0.00025,
+    confirmations: 0,
+    error: 'Insufficient SOL balance'
+  },
+  {
+    id: 'mint_007',
+    timestamp: '2024-01-23 14:24:12',
+    collection: 'Achievement Badges v2',
+    nftName: 'Achievement cNFT #155',
+    recipient: '5I4O3p2A1s0D9f8G7h6J5k4L3m2N1b0V9c8X7z6A5s4D3f2G1h0J9',
+    status: 'failed',
+    transactionHash: null,
+    treeAddress: '9M3S1a2G7h8J4k5L6z7X8c9V0b1N2m3Q',
+    leafIndex: null,
+    cost: 0.00025,
+    confirmations: 0,
+    error: 'RPC timeout - network congestion'
   }
 ]
 
@@ -131,7 +159,17 @@ export default function HistoryPage() {
   const totalOperations = mintingHistory.length
   const completedOperations = mintingHistory.filter(op => op.status === 'completed').length
   const failedOperations = mintingHistory.filter(op => op.status === 'failed').length
+  const processingOperations = mintingHistory.filter(op => op.status === 'processing').length
   const totalCost = mintingHistory.reduce((sum, op) => sum + op.cost, 0)
+  const successRate = totalOperations > 0 ? (completedOperations / totalOperations * 100) : 0
+  const avgCostPerMint = completedOperations > 0 ? (totalCost / totalOperations) : 0
+
+  // Get today's operations for daily stats
+  const today = new Date().toISOString().split('T')[0]
+  const todayOperations = mintingHistory.filter(op => op.timestamp.startsWith(today))
+  const todayCompleted = todayOperations.filter(op => op.status === 'completed').length
+  const todayFailed = todayOperations.filter(op => op.status === 'failed').length
+  const todayTotal = todayOperations.length
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 p-6">
@@ -162,64 +200,9 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white/80 backdrop-blur border-0 shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Operations</p>
-                  <p className="text-3xl font-bold text-gray-900">{totalOperations}</p>
-                </div>
-                <div className="p-3 bg-blue-100 rounded-full">
-                  <Database className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card className="bg-white/80 backdrop-blur border-0 shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Completed</p>
-                  <p className="text-3xl font-bold text-green-600">{completedOperations}</p>
-                </div>
-                <div className="p-3 bg-green-100 rounded-full">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card className="bg-white/80 backdrop-blur border-0 shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Failed</p>
-                  <p className="text-3xl font-bold text-red-600">{failedOperations}</p>
-                </div>
-                <div className="p-3 bg-red-100 rounded-full">
-                  <AlertCircle className="h-6 w-6 text-red-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card className="bg-white/80 backdrop-blur border-0 shadow-md">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Cost</p>
-                  <p className="text-3xl font-bold text-gray-900">{totalCost.toFixed(5)} ◎</p>
-                </div>
-                <div className="p-3 bg-purple-100 rounded-full">
-                  <Wallet className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Filters */}
         <Card className="bg-white/80 backdrop-blur border-0 shadow-md mb-8">
@@ -278,14 +261,24 @@ export default function HistoryPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Badge className={`px-3 py-1 ${getStatusColor(transaction.status)}`}>
-                        {getStatusIcon(transaction.status)}
-                        <span className="ml-2">{transaction.status.toUpperCase()}</span>
-                      </Badge>
-                      <span className="text-sm font-mono text-gray-600">
-                        {transaction.cost} ◎
-                      </span>
+                    <div className="flex items-center gap-4">
+                      {/* Compact Stats */}
+                      <div className="flex items-center gap-3 text-sm text-gray-600">
+                        <span className="font-semibold text-emerald-600">{successRate.toFixed(1)}%</span>
+                        <span>Sent: {totalOperations}</span>
+                        <span className="text-green-600">✓ {completedOperations}</span>
+                        <span className="text-red-600">✗ {failedOperations}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        <Badge className={`px-3 py-1 ${getStatusColor(transaction.status)}`}>
+                          {getStatusIcon(transaction.status)}
+                          <span className="ml-2">{transaction.status.toUpperCase()}</span>
+                        </Badge>
+                        <span className="text-sm font-mono text-gray-600">
+                          {transaction.cost} ◎
+                        </span>
+                      </div>
                     </div>
                   </div>
 
