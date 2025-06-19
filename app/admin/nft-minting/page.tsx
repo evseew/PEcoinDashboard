@@ -17,8 +17,7 @@ export default function NFTMintingPage() {
       treeAddress: "7xKXrW9mF2H8L3nN5d6aPqM1J4zR8vT9G2B5k7N3sQwE",
       capacity: 1024,
       minted: 87,
-      queued: 45,
-      status: "minting"
+      queued: 45
     },
     {
       id: 2,
@@ -26,8 +25,7 @@ export default function NFTMintingPage() {
       treeAddress: "9M3ScY1G7H2K5pP8qQ1r6B3n4M7J8vF2A5w9X2s3D4f6",
       capacity: 512,
       minted: 50,
-      queued: 0,
-      status: "completed"
+      queued: 0
     },
     {
       id: 3,
@@ -35,19 +33,11 @@ export default function NFTMintingPage() {
       treeAddress: "5N8Tb2H8K3M7pP1qQ5r9B6n2M4J7vF8A2w6X9s1D3f5",
       capacity: 2048,
       minted: 44,
-      queued: 156,
-      status: "active"
+      queued: 156
     }
   ]
 
-  function getStatusColor(status: string) {
-    switch(status) {
-      case 'completed': return 'bg-green-100 text-green-800'
-      case 'minting': return 'bg-blue-100 text-blue-800'
-      case 'active': return 'bg-orange-100 text-orange-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
@@ -103,22 +93,24 @@ export default function NFTMintingPage() {
                 Minting Statistics
               </CardTitle>
               <CardDescription className="text-blue-100">
-                Overall efficiency and operation statistics
+                Statistics aggregated from all active collections
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-blue-100">Minted today:</span>
-                  <span className="font-semibold">23 NFT</span>
+                  <span className="text-blue-100">Total minted:</span>
+                  <span className="font-semibold">{activeCollections.reduce((sum, c) => sum + c.minted, 0)} NFT</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-blue-100">Success rate:</span>
-                  <span className="font-semibold">98.5%</span>
+                  <span className="text-blue-100">Total capacity:</span>
+                  <span className="font-semibold">{activeCollections.reduce((sum, c) => sum + c.capacity, 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-blue-100">Avg. cost:</span>
-                  <span className="font-semibold">0.002 SOL</span>
+                  <span className="text-blue-100">Usage rate:</span>
+                  <span className="font-semibold">
+                    {((activeCollections.reduce((sum, c) => sum + c.minted, 0) / activeCollections.reduce((sum, c) => sum + c.capacity, 0)) * 100).toFixed(1)}%
+                  </span>
                 </div>
               </div>
             </CardContent>
@@ -163,9 +155,6 @@ export default function NFTMintingPage() {
                       <div className="text-sm text-gray-600">
                         {collection.minted}/{collection.capacity} minted • {collection.queued} queued
                       </div>
-                      <Badge className={`text-xs ${getStatusColor(collection.status)}`}>
-                        {collection.status}
-                      </Badge>
                     </div>
                     <Button variant="outline" size="sm">View</Button>
                   </div>

@@ -11,9 +11,9 @@ import {
   Settings, 
   Palette, 
   ArrowLeft,
-  ExternalLink,
   Copy,
-  MoreVertical
+  Trash2,
+  ImageIcon
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -28,7 +28,6 @@ export default function CollectionSettingsPage() {
       minted: 87,
       depth: 10,
       leaves: 1024,
-      status: "minting",
       createdAt: "2024-01-15",
       lastMint: "2024-01-20 14:30"
     },
@@ -40,7 +39,6 @@ export default function CollectionSettingsPage() {
       minted: 50,
       depth: 9,
       leaves: 512,
-      status: "completed",
       createdAt: "2024-01-10",
       lastMint: "2024-01-18 16:45"
     },
@@ -52,20 +50,12 @@ export default function CollectionSettingsPage() {
       minted: 44,
       depth: 11,
       leaves: 2048,
-      status: "active",
       createdAt: "2024-01-12",
       lastMint: "2024-01-19 10:15"
     }
   ]
 
-  function getStatusColor(status: string) {
-    switch(status) {
-      case 'completed': return 'bg-green-100 text-green-800'
-      case 'minting': return 'bg-blue-100 text-blue-800'
-      case 'active': return 'bg-orange-100 text-orange-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
+
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
@@ -73,6 +63,20 @@ export default function CollectionSettingsPage() {
       title: "Copied",
       description: "Tree address copied to clipboard",
     })
+  }
+
+  // Generate unique colors for collection icons based on name
+  const getCollectionIconColors = (name: string) => {
+    const colorSets = [
+      { bg: 'from-purple-100 to-blue-100', text: 'text-purple-600' },
+      { bg: 'from-green-100 to-emerald-100', text: 'text-green-600' },
+      { bg: 'from-orange-100 to-red-100', text: 'text-orange-600' },
+      { bg: 'from-pink-100 to-rose-100', text: 'text-pink-600' },
+      { bg: 'from-indigo-100 to-purple-100', text: 'text-indigo-600' },
+      { bg: 'from-teal-100 to-cyan-100', text: 'text-teal-600' },
+    ]
+    const index = name.length % colorSets.length
+    return colorSets[index]
   }
 
   return (
@@ -149,28 +153,46 @@ export default function CollectionSettingsPage() {
               {collections.map((collection) => (
                 <Card key={collection.id} className="border">
                   <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
+                    <div className="flex items-center gap-4 mb-4">
+                      {/* Collection Icon */}
+                      <div className={`w-10 h-10 bg-gradient-to-br ${getCollectionIconColors(collection.name).bg} rounded-lg flex items-center justify-center flex-shrink-0`}>
+                        <ImageIcon className={`h-5 w-5 ${getCollectionIconColors(collection.name).text}`} />
+                      </div>
+                      
+                      {/* Collection Info */}
+                      <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-semibold mb-1">{collection.name}</h3>
-                        <div className="flex items-center gap-2 mb-2">
-                          <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono">
+                        <div className="flex items-center gap-2">
+                          <code className="text-sm bg-gray-100 px-2 py-1 rounded font-mono truncate">
                             {collection.treeAddress}
                           </code>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => copyToClipboard(collection.treeAddress)}
-                            className="h-6 w-6 p-0"
+                            className="h-6 w-6 p-0 flex-shrink-0"
                           >
                             <Copy className="h-3 w-3" />
                           </Button>
                         </div>
-                        <Badge className={`text-xs ${getStatusColor(collection.status)}`}>
-                          {collection.status}
-                        </Badge>
                       </div>
-                      <Button variant="ghost" size="sm">
-                        <MoreVertical className="h-4 w-4" />
+                      
+                      {/* Delete Button */}
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete "${collection.name}" collection?`)) {
+                            toast({
+                              title: "Collection Deleted",
+                              description: "The collection has been removed from your library.",
+                            })
+                            // TODO: Implement actual deletion logic
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
 
@@ -193,20 +215,10 @@ export default function CollectionSettingsPage() {
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-4 border-t flex justify-between items-center">
+                                        <div className="mt-4 pt-4 border-t">
                       <span className="text-sm text-gray-600">
                         Last mint: {collection.lastMint}
                       </span>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          <ExternalLink className="h-4 w-4 mr-1" />
-                          Solscan
-                        </Button>
-                                                  <Button variant="outline" size="sm">
-                            <Settings className="h-4 w-4 mr-1" />
-                            Settings
-                          </Button>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
