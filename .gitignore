@@ -18,6 +18,11 @@ test-*.ts
 /.next/
 /out/
 
+# cache directories
+node_modules/.cache/
+.next/cache/
+.cache/
+
 # production
 /build
 

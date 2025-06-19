@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation"
 import { motion } from "framer-motion"
 import { useAuth } from "@/components/auth/auth-provider"
 import { CampIcon } from "@/components/camp-icons"
-import { LogOut, Users, Rocket, UserCog, LayoutDashboard, ChevronRight, Menu, X, Moon, Sun } from "lucide-react"
+import { LogOut, Users, Rocket, UserCog, LayoutDashboard, ChevronRight, Menu, X, Moon, Sun, Palette } from "lucide-react"
 import { useTheme } from "next-themes"
 
 interface AdminLayoutProps {
@@ -32,9 +32,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { name: "Teams", href: "/admin/teams", icon: Users },
     { name: "Startups", href: "/admin/startups", icon: Rocket },
     { name: "Staff", href: "/admin/staff", icon: UserCog },
+    { name: "NFT Minting", href: "/admin/nft-minting", icon: Palette },
   ]
 
   const isActive = (path: string) => {
+    if (path === "/admin/nft-minting") {
+      return pathname.startsWith("/admin/nft-minting")
+    }
     return pathname === path
   }
 

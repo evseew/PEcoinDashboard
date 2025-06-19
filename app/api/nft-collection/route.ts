@@ -330,51 +330,125 @@ async function getAllNFTs(ownerAddress: string): Promise<NFTData[]> {
   }
 }
 
+// In-memory storage for demo purposes
+// In production, this would be stored in a database
+let collections: any[] = []
+
+export async function GET() {
+  try {
+    return NextResponse.json({ 
+      success: true, 
+      collections: collections,
+      count: collections.length 
+    })
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch collections' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { walletAddress } = await request.json()
+    const body = await request.json()
     
-    if (!walletAddress) {
+    // Validate required fields - теперь capacity тоже приходит автоматически
+    const { name, treeAddress, capacity, minted } = body
+    if (!name || !treeAddress || !capacity) {
       return NextResponse.json(
-        { error: 'Wallet address is required' },
+        { success: false, error: 'Missing required fields: name, treeAddress, capacity' },
         { status: 400 }
       )
     }
-    
-    console.log(`[API] Запрос NFT для кошелька: ${walletAddress}`)
-    
-    // Валидация адреса
-    try {
-      new PublicKey(walletAddress)
-    } catch (error) {
+
+    // Validate Solana address format
+    const solanaAddressRegex = /^[1-9A-HJ-NP-Za-km-z]{44}$/
+    if (!solanaAddressRegex.test(treeAddress)) {
       return NextResponse.json(
-        { error: 'Invalid wallet address' },
+        { success: false, error: 'Invalid Solana address format' },
         { status: 400 }
       )
     }
-    
-    // Создаем ключ для кэша
-    const cacheKey = ServerCache.createKey('nft-collection', { wallet: walletAddress })
-    
-    // Временно отключаем кэш для тестирования compressed NFT
-    const nfts = await getAllNFTs(walletAddress)
-    
-    console.log(`[API] Возвращено ${nfts.length} NFT для кошелька ${walletAddress}`)
-    
-    return NextResponse.json({
-      success: true,
-      nfts,
-      count: nfts.length,
-      cached: true // Индикатор что используется кэш
+
+    // Check for duplicate tree addresses
+    const existingCollection = collections.find(c => c.treeAddress === treeAddress)
+    if (existingCollection) {
+      return NextResponse.json(
+        { success: false, error: 'Collection with this tree address already exists' },
+        { status: 409 }
+      )
+    }
+
+    // Create new collection из автоматически полученных данных
+    const newCollection = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: name.trim(),
+      description: body.description?.trim() || `Compressed NFT collection automatically imported`,
+      treeAddress,
+      metadataUri: body.metadataUri || '',
+      totalCapacity: parseInt(capacity),
+      mintedNFTs: parseInt(minted) || 0, // Используем фактическое количество заминченных
+      queuedNFTs: 0,
+      status: parseInt(minted) > 0 ? 'active' : 'imported', // Устанавливаем статус на основе количества заминченных
+      createdAt: new Date().toISOString(),
+      lastMinted: parseInt(minted) > 0 ? new Date().toISOString() : null,
+      importedAt: new Date().toISOString(),
+      // Дополнительные поля из автоимпорта
+      symbol: body.symbol || 'CNFT',
+      creator: body.creator || '',
+      image: body.image || ''
+    }
+
+    // Add to collections
+    collections.push(newCollection)
+
+    console.log(`[POST] Коллекция импортирована: ${newCollection.name} (${newCollection.mintedNFTs}/${newCollection.totalCapacity})`)
+
+    return NextResponse.json({ 
+      success: true, 
+      collection: newCollection,
+      message: `Collection "${newCollection.name}" imported successfully with ${newCollection.mintedNFTs} minted NFTs`
     })
-    
   } catch (error) {
-    console.error('[API] Ошибка получения NFT:', error)
+    console.error('Error importing collection:', error)
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch NFTs',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const collectionId = searchParams.get('id')
+    
+    if (!collectionId) {
+      return NextResponse.json(
+        { success: false, error: 'Collection ID required' },
+        { status: 400 }
+      )
+    }
+
+    const initialLength = collections.length
+    collections = collections.filter(c => c.id !== collectionId)
+    
+    if (collections.length === initialLength) {
+      return NextResponse.json(
+        { success: false, error: 'Collection not found' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Collection deleted successfully' 
+    })
+  } catch (error) {
+    console.error('Error deleting collection:', error)
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     )
   }

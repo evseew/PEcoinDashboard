@@ -9,7 +9,12 @@
     "start": "next start",
     "lint": "next lint",
     "vercel-build": "next build",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf .next && rm -rf node_modules/.cache",
+    "clean:all": "rm -rf .next && rm -rf node_modules/.cache && rm -rf node_modules && pnpm install",
+    "dev:clean": "npm run clean && next dev",
+    "build:clean": "npm run clean && next build",
+    "reset": "npm run clean && next dev"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "^1.2.1",

@@ -12,6 +12,8 @@ export function AdminNav() {
     return pathname === path
   }
 
+  // NFT модуль всегда встроенный - никаких внешних сервисов
+
   return (
     <header className="bg-white shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -50,6 +52,36 @@ export function AdminNav() {
                 }`}
               >
                 Startups
+              </Link>
+              <Link
+                href="/admin/teams"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  isActive("/admin/teams")
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                }`}
+              >
+                Teams
+              </Link>
+              <Link
+                href="/admin/staff"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  isActive("/admin/staff")
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                }`}
+              >
+                Staff
+              </Link>
+              <Link
+                href="/admin/nft-minting"
+                className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 ${
+                  pathname.startsWith("/admin/nft-minting")
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                }`}
+              >
+                🎨 NFT Minting
               </Link>
             </nav>
           </div>
