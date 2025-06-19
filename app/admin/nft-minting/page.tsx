@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ImportCollectionModal } from '@/components/admin/import-collection-modal'
-import { TestImportButton } from '@/components/admin/test-import-button'
+
 import { toast } from '@/hooks/use-toast'
 import { Upload, Palette, History, Settings, Plus, Image, Zap, FolderPlus, Database } from 'lucide-react'
 
@@ -183,8 +183,7 @@ export default function NFTMintingPage() {
           </CardContent>
         </Card>
 
-        {/* Test Import Function */}
-        <TestImportButton />
+
 
         {/* Quick Actions */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
