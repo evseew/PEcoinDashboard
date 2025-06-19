@@ -4,10 +4,9 @@ import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ImportCollectionModal } from '@/components/admin/import-collection-modal'
+import { SolanaBalanceDisplay } from '@/components/solana-balance-display'
 
-import { toast } from '@/hooks/use-toast'
-import { Upload, Palette, History, Settings, Plus, Image, Zap, FolderPlus, Database } from 'lucide-react'
+import { Upload, History, Settings, Zap, Database } from 'lucide-react'
 
 export default function NFTMintingPage() {
   // Sample data for active collections
@@ -64,9 +63,7 @@ export default function NFTMintingPage() {
                 Manage and mint compressed NFT collections for PEcamp ecosystem
               </p>
             </div>
-            <Badge variant="secondary" className="px-4 py-2 text-sm">
-              ⚡ Powered by Solana cNFT
-            </Badge>
+            <SolanaBalanceDisplay />
           </div>
         </div>
 
@@ -74,40 +71,6 @@ export default function NFTMintingPage() {
 
         {/* Main Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Import Collection */}
-          <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 border-0 shadow-xl text-white">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-3 text-xl">
-                <FolderPlus className="h-6 w-6" />
-                Import Collection
-              </CardTitle>
-              <CardDescription className="text-emerald-100">
-                Add an existing compressed NFT collection from local setup
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ImportCollectionModal 
-                trigger={
-                  <Button 
-                    size="lg" 
-                    className="w-full bg-white text-emerald-600 hover:bg-emerald-50 font-semibold"
-                  >
-                    <Database className="h-5 w-5 mr-2" />
-                    Import Collection
-                  </Button>
-                }
-                onImport={(collectionData) => {
-                  console.log('Collection imported:', collectionData)
-                  toast({
-                    title: "Collection Imported",
-                    description: "The collection has been successfully imported and added to your library.",
-                  })
-                  // TODO: Add to global state or refresh data
-                }}
-              />
-            </CardContent>
-          </Card>
-
           {/* Mint NFTs */}
           <Card className="bg-gradient-to-br from-purple-500 to-purple-600 border-0 shadow-xl text-white">
             <CardHeader className="pb-4">
@@ -116,7 +79,7 @@ export default function NFTMintingPage() {
                 Mint cNFTs
               </CardTitle>
               <CardDescription className="text-purple-100">
-                Add NFTs to minting queue from imported collections
+                Create and mint compressed NFTs from uploaded collections
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -126,9 +89,38 @@ export default function NFTMintingPage() {
                   className="w-full bg-white text-purple-600 hover:bg-purple-50 font-semibold"
                 >
                   <Upload className="h-5 w-5 mr-2" />
-                  Add to Queue
+                  Start Minting
                 </Button>
               </Link>
+            </CardContent>
+          </Card>
+
+          {/* Minting Stats */}
+          <Card className="bg-gradient-to-br from-blue-500 to-indigo-600 border-0 shadow-xl text-white">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-3 text-xl">
+                <Settings className="h-6 w-6" />
+                Minting Statistics
+              </CardTitle>
+              <CardDescription className="text-blue-100">
+                Overall efficiency and operation statistics
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-blue-100">Minted today:</span>
+                  <span className="font-semibold">23 NFT</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-blue-100">Success rate:</span>
+                  <span className="font-semibold">98.5%</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-blue-100">Avg. cost:</span>
+                  <span className="font-semibold">0.002 SOL</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -186,32 +178,26 @@ export default function NFTMintingPage() {
 
 
         {/* Quick Actions */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
           <Link href="/admin/nft-minting/history">
             <Card className="bg-white/80 backdrop-blur border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
               <CardContent className="p-6 text-center">
                 <History className="h-8 w-8 mx-auto mb-3 text-gray-600" />
                 <h3 className="font-semibold text-gray-900 mb-1">Minting History</h3>
-                <p className="text-sm text-gray-600">View transaction logs</p>
+                <p className="text-sm text-gray-600">Transaction logs and efficiency</p>
               </CardContent>
             </Card>
           </Link>
 
-          <Card className="bg-white/80 backdrop-blur border-0 shadow-md">
-            <CardContent className="p-6 text-center">
-              <Settings className="h-8 w-8 mx-auto mb-3 text-gray-600" />
-              <h3 className="font-semibold text-gray-900 mb-1">Collection Settings</h3>
-              <p className="text-sm text-gray-600">Configure parameters</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/80 backdrop-blur border-0 shadow-md">
-            <CardContent className="p-6 text-center">
-              <Palette className="h-8 w-8 mx-auto mb-3 text-gray-600" />
-              <h3 className="font-semibold text-gray-900 mb-1">Tree Analytics</h3>
-              <p className="text-sm text-gray-600">Merkle tree insights</p>
-            </CardContent>
-          </Card>
+          <Link href="/admin/nft-minting/settings">
+            <Card className="bg-white/80 backdrop-blur border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+              <CardContent className="p-6 text-center">
+                <Settings className="h-8 w-8 mx-auto mb-3 text-gray-600" />
+                <h3 className="font-semibold text-gray-900 mb-1">Collection Management</h3>
+                <p className="text-sm text-gray-600">Import and configure collections</p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
       </div>
     </div>
