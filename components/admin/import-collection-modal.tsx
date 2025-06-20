@@ -25,7 +25,8 @@ import {
   ExternalLink,
   Loader2,
   Search,
-  Zap
+  Zap,
+  ImageIcon
 } from 'lucide-react'
 
 interface ImportCollectionModalProps {
@@ -42,6 +43,9 @@ interface CollectionData {
   creator?: string
   symbol?: string
   image?: string
+  hasValidTree?: boolean
+  supportsDAS?: boolean
+  rpcUsed?: string
 }
 
 export function ImportCollectionModal({ trigger, onImport }: ImportCollectionModalProps) {
@@ -131,11 +135,23 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
 
     setLoading(true)
     try {
-      // Используем полученные данные для импорта
+      // Подготавливаем данные согласно новой схеме БД
       const importData = {
-        ...collectionData,
-        name: customName.trim() || collectionData.name, // Пользователь может переопределить название
-        treeAddress: treeAddress
+        name: customName.trim() || collectionData.name,
+        description: collectionData.description || '',
+        symbol: collectionData.symbol || 'cNFT',
+        treeAddress: treeAddress,
+        creator: collectionData.creator,
+        capacity: collectionData.capacity,
+        minted: collectionData.minted,
+        image: collectionData.image,
+        hasValidTree: collectionData.hasValidTree,
+        supportsDAS: collectionData.supportsDAS,
+        rpcUsed: collectionData.rpcUsed,
+        // Дополнительные поля для новой схемы
+        status: 'active',
+        isPublic: true,
+        allowMinting: true
       }
 
       const response = await fetch('/api/nft-collection', {
@@ -282,29 +298,99 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
                 <span className="font-semibold text-emerald-900">Данные коллекции</span>
               </div>
               
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-emerald-700">Название:</span>
-                  <span className="font-medium text-emerald-900">{collectionData.name}</span>
+              <div className="space-y-3 text-sm">
+                {/* Основная информация */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-emerald-700 block text-xs">Название:</span>
+                    <span className="font-medium text-emerald-900 text-sm">{collectionData.name}</span>
+                  </div>
+                  <div>
+                    <span className="text-emerald-700 block text-xs">Символ:</span>
+                    <span className="font-medium text-emerald-900 text-sm">{collectionData.symbol || 'cNFT'}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-emerald-700">Capacity:</span>
-                  <span className="font-medium text-emerald-900">{collectionData.capacity.toLocaleString()}</span>
+                
+                {/* Статистика NFT */}
+                <div className="bg-white rounded-lg p-3 border border-emerald-300">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-emerald-900">{collectionData.minted.toLocaleString()}</div>
+                      <div className="text-xs text-emerald-600">Заминчено NFT</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-emerald-700">{collectionData.capacity.toLocaleString()}</div>
+                      <div className="text-xs text-emerald-600">Вместимость</div>
+                    </div>
+                  </div>
+                  
+                  {/* Прогресс заполнения */}
+                  {collectionData.capacity > 0 && (
+                    <div className="mt-3">
+                      <div className="flex justify-between text-xs text-emerald-600 mb-1">
+                        <span>Заполнение</span>
+                        <span>{Math.round((collectionData.minted / collectionData.capacity) * 100)}%</span>
+                      </div>
+                      <div className="w-full bg-emerald-100 rounded-full h-2">
+                        <div 
+                          className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full transition-all duration-500" 
+                          style={{ width: `${Math.min((collectionData.minted / collectionData.capacity) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-emerald-700">Заминчено:</span>
-                  <span className="font-medium text-emerald-900">{collectionData.minted.toLocaleString()}</span>
+                
+                {/* Статусы */}
+                <div className="flex flex-wrap gap-2">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    collectionData.hasValidTree 
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {collectionData.hasValidTree ? '✅ Валидная' : '❌ Проблемы'}
+                  </span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    collectionData.supportsDAS 
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {collectionData.supportsDAS ? '🔗 DAS API' : '⚠️ Без DAS'}
+                  </span>
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                    💾 Compressed NFT
+                  </span>
                 </div>
-                {collectionData.symbol && (
-                  <div className="flex justify-between">
-                    <span className="text-emerald-700">Symbol:</span>
-                    <span className="font-medium text-emerald-900">{collectionData.symbol}</span>
+                
+                {/* Описание */}
+                {collectionData.description && (
+                  <div className="mt-3 p-2 bg-emerald-100/50 rounded border-l-4 border-emerald-400">
+                    <span className="text-emerald-700 font-medium text-xs">Описание:</span>
+                    <p className="text-emerald-900 text-xs mt-1 leading-relaxed">{collectionData.description}</p>
                   </div>
                 )}
-                {collectionData.description && (
-                  <div className="mt-2">
-                    <span className="text-emerald-700">Описание:</span>
-                    <p className="text-emerald-900 text-xs mt-1">{collectionData.description}</p>
+                
+                {/* Изображение коллекции */}
+                {collectionData.image && (
+                  <div className="flex justify-center">
+                    <div className="relative">
+                      <img 
+                        src={collectionData.image} 
+                        alt={collectionData.name}
+                        className="w-24 h-24 object-cover rounded-lg border-2 border-emerald-200 shadow-md"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                          const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                          if (fallback) fallback.style.display = 'flex'
+                        }}
+                      />
+                      <div className="w-24 h-24 bg-emerald-100 border-2 border-emerald-200 rounded-lg flex items-center justify-center hidden">
+                        <ImageIcon className="h-8 w-8 text-emerald-400" />
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white rounded-full p-1">
+                        <ImageIcon className="h-3 w-3" />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

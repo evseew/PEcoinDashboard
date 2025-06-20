@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { useNFTCollections } from '@/hooks/use-nft-collections'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,37 +57,14 @@ interface MintingProgress {
   estimatedTimeLeft: number
 }
 
-// Available collections for selection
-const availableCollections = [
-  {
-    id: '1',
-    name: 'PEcamp Founders cNFT',
-    treeAddress: '7xKXqR9mF2x3G4y1W5s6Q7t8P9u0V1w2X',
-    status: 'active',
-    capacity: 1024,
-    minted: 98
-  },
-  {
-    id: '2',
-    name: 'Achievement Badges v2',
-    treeAddress: '9M3S1a2G7h8J4k5L6z7X8c9V0b1N2m3Q',
-    status: 'active',
-    capacity: 2048,
-    minted: 244
-  },
-  {
-    id: '3',
-    name: 'Seasonal Collection Winter',
-    treeAddress: '4G3F2d1S0a9P8o7I6u5Y4t3R2e1W0q9E',
-    status: 'imported',
-    capacity: 256,
-    minted: 0
-  }
-]
+// Теперь используем реальные коллекции из базы данных
 
 export default function NFTUploadPage() {
   const searchParams = useSearchParams()
   const preselectedCollectionId = searchParams.get('collection')
+  
+  // Загружаем реальные коллекции из базы данных
+  const { collections, loading: collectionsLoading, getActiveCollections } = useNFTCollections()
   
   const [dragActive, setDragActive] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
@@ -98,12 +76,15 @@ export default function NFTUploadPage() {
   const [abortController, setAbortController] = useState<AbortController | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Получаем только активные коллекции доступные для минтинга
+  const availableCollections = getActiveCollections().filter(c => c.allow_minting)
+
   // Автоматически выбираем коллекцию из URL параметра
   useEffect(() => {
     if (preselectedCollectionId && availableCollections.find(c => c.id === preselectedCollectionId)) {
       setSelectedCollection(preselectedCollectionId)
     }
-  }, [preselectedCollectionId])
+  }, [preselectedCollectionId, availableCollections])
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -436,17 +417,33 @@ export default function NFTUploadPage() {
                       <SelectValue placeholder="Select a collection" />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableCollections.map((collection) => (
-                        <SelectItem key={collection.id} value={collection.id}>
+                      {collectionsLoading ? (
+                        <SelectItem value="loading" disabled>
                           <div className="flex items-center gap-2">
-                            <Database className="h-4 w-4" />
-                            <span>{collection.name}</span>
-                            <Badge variant="outline" className="ml-2">
-                              {collection.status}
-                            </Badge>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Загружаем коллекции...</span>
                           </div>
                         </SelectItem>
-                      ))}
+                      ) : availableCollections.length === 0 ? (
+                        <SelectItem value="empty" disabled>
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-orange-500" />
+                            <span>Нет активных коллекций</span>
+                          </div>
+                        </SelectItem>
+                      ) : (
+                        availableCollections.map((collection) => (
+                          <SelectItem key={collection.id} value={collection.id}>
+                            <div className="flex items-center gap-2">
+                              <Database className="h-4 w-4" />
+                              <span>{collection.name}</span>
+                              <Badge variant="outline" className="ml-2">
+                                {collection.minted}/{collection.capacity}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   {selectedCollectionData && (
@@ -456,12 +453,31 @@ export default function NFTUploadPage() {
                         <span className="text-sm font-medium text-emerald-900">Selected Collection</span>
                       </div>
                       <p className="text-xs font-mono text-emerald-700 mb-2">
-                        {selectedCollectionData.treeAddress}
+                        {selectedCollectionData.tree_address}
                       </p>
                       <div className="flex justify-between text-xs text-emerald-700">
                         <span>Capacity: {selectedCollectionData.capacity}</span>
                         <span>Minted: {selectedCollectionData.minted}</span>
                       </div>
+                    </div>
+                  )}
+                  
+                  {/* Hint to import collections if none available */}
+                  {!collectionsLoading && availableCollections.length === 0 && (
+                    <div className="mt-2 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertCircle className="h-4 w-4 text-orange-600" />
+                        <span className="text-sm font-medium text-orange-900">Нет доступных коллекций</span>
+                      </div>
+                      <p className="text-xs text-orange-700 mb-2">
+                        Сначала импортируйте коллекцию для минтинга compressed NFT
+                      </p>
+                      <Link href="/admin/nft-minting/settings">
+                        <Button size="sm" variant="outline" className="text-orange-700 border-orange-300 hover:bg-orange-100">
+                          <Database className="h-3 w-3 mr-1" />
+                          Импортировать коллекцию
+                        </Button>
+                      </Link>
                     </div>
                   )}
                 </div>

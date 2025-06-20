@@ -70,3 +70,6 @@ alchemy-test.mjs
 
 # Cache files
 CACHE-SYSTEM.md
+
+# Reference code (examples, not part of the project)
+reference-code/
