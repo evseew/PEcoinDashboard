@@ -5,6 +5,7 @@ import { getAlchemyUrl } from '@/lib/alchemy/solana'
 
 const ALCHEMY_URL = getAlchemyUrl()
 const connection = new Connection(ALCHEMY_URL, 'confirmed')
+const SPL_MEMO_PROGRAM_ID = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'
 
 interface NFTTransaction {
   signature: string
@@ -18,10 +19,66 @@ interface NFTTransaction {
   date: string
   blockTime: number
   verified: boolean
+  memo?: string
 }
 
 // Кэширование
 const cache = new Map<string, { data: any, timestamp: number }>()
+
+/**
+ * Извлекает memo из транзакции Solana
+ */
+function extractMemoFromTransaction(tx: any): string | undefined {
+  try {
+    if (!tx?.transaction?.message?.instructions) {
+      return undefined;
+    }
+
+    const accountKeys = tx.transaction.message.accountKeys;
+    
+    // Ищем SPL Memo инструкции
+    for (const instruction of tx.transaction.message.instructions) {
+      const programId = accountKeys[instruction.programIdIndex]?.toBase58();
+      
+      if (programId === SPL_MEMO_PROGRAM_ID && instruction.data) {
+        try {
+          // Декодируем memo данные из base64 в текст
+          const memoBuffer = Buffer.from(instruction.data, 'base64');
+          const memo = memoBuffer.toString('utf8');
+          return memo.trim();
+        } catch (error) {
+          console.warn(`[extractMemoFromTransaction] Ошибка декодирования memo: ${error}`);
+          continue;
+        }
+      }
+    }
+
+    // Также проверяем inner instructions
+    if (tx.meta?.innerInstructions) {
+      for (const innerGroup of tx.meta.innerInstructions) {
+        for (const innerInstruction of innerGroup.instructions) {
+          const programId = accountKeys[innerInstruction.programIdIndex]?.toBase58();
+          
+          if (programId === SPL_MEMO_PROGRAM_ID && innerInstruction.data) {
+            try {
+              const memoBuffer = Buffer.from(innerInstruction.data, 'base64');
+              const memo = memoBuffer.toString('utf8');
+              return memo.trim();
+            } catch (error) {
+              console.warn(`[extractMemoFromTransaction] Ошибка декодирования inner memo: ${error}`);
+              continue;
+            }
+          }
+        }
+      }
+    }
+    
+    return undefined;
+  } catch (error) {
+    console.warn(`[extractMemoFromTransaction] Общая ошибка: ${error}`);
+    return undefined;
+  }
+}
 
 function getCachedData(type: string, key: string): any | null {
   const cacheKey = `${type}:${key}`
@@ -99,12 +156,15 @@ async function getNFTTransactions(walletAddress: string, limit: number = 10): Pr
           
           console.log(`\n[getNFTTransactions] 🔍 Анализ транзакции: ${signature}`)
           
-                     // Парсим Standard/Core NFT транзакции
-           const standardNFTs = await parseStandardNFTTransfers(tx.meta, tx, walletAddress, blockTime)
+          // Извлекаем memo из транзакции
+          const memo = extractMemoFromTransaction(tx)
+          
+          // Парсим Standard/Core NFT транзакции
+           const standardNFTs = await parseStandardNFTTransfers(tx.meta, tx, walletAddress, blockTime, memo)
            nftTransactions.push(...standardNFTs)
           
           // Парсим Compressed NFT транзакции (несколько методов)
-          const compressedNFTs = await parseAllCompressedNFTMethods(tx, walletAddress, blockTime, signature)
+          const compressedNFTs = await parseAllCompressedNFTMethods(tx, walletAddress, blockTime, signature, memo)
           nftTransactions.push(...compressedNFTs)
         }
       } catch (error) {
@@ -156,7 +216,7 @@ async function parseNFTTransfersFromTransaction(transaction: any, userWallet: st
 }
 
 // Парсинг стандартных NFT (текущая логика)
-async function parseStandardNFTTransfers(meta: any, tx: any, userWallet: string, blockTime: number): Promise<NFTTransaction[]> {
+async function parseStandardNFTTransfers(meta: any, tx: any, userWallet: string, blockTime: number, memo?: string): Promise<NFTTransaction[]> {
   const nftTransfers: NFTTransaction[] = []
   
   // Анализируем изменения token balances для обнаружения NFT трансферов
@@ -234,7 +294,8 @@ async function parseStandardNFTTransfers(meta: any, tx: any, userWallet: string,
       to,
       date: blockTime ? new Date(blockTime * 1000).toISOString() : new Date().toISOString(),
       blockTime: blockTime || 0,
-      verified: nftMetadata?.verified || false
+      verified: nftMetadata?.verified || false,
+      memo: memo
     }
     
     nftTransfers.push(nftTransaction)
@@ -611,7 +672,7 @@ function parseSimpleMetadata(data: Buffer): { name: string; symbol: string; uri:
 }
 
 // Парсинг всех методов Compressed NFT  
-async function parseAllCompressedNFTMethods(tx: any, userWallet: string, blockTime: number, signature: string): Promise<NFTTransaction[]> {
+async function parseAllCompressedNFTMethods(tx: any, userWallet: string, blockTime: number, signature: string, memo?: string): Promise<NFTTransaction[]> {
   const results: NFTTransaction[] = []
   
   try {

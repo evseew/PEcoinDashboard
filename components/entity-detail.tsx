@@ -239,43 +239,73 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
     []
   )
 
-  // Получение транзакций по всем PEcoin token accounts (убираем старую NFT логику)
+  // Получение всех транзакций (PEcoin + NFT)
   const fetchHistory = useCallback(
     async (walletAddress: string, beforeSignature?: string) => {
       setHistoryError(null)
       try {
-        // Новый API принимает walletAddress и сам найдет все PEcoin token accounts
+        // Загружаем PEcoin транзакции
         const requestBody: any = { walletAddress, limit: 10 }
         if (beforeSignature) {
           requestBody.beforeSignature = beforeSignature
         }
 
-        const res = await fetch("/api/pecoin-history", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(requestBody),
-        })
+        const [pecoinRes, nftRes] = await Promise.all([
+          fetch("/api/pecoin-history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(requestBody),
+          }),
+          fetch("/api/nft-transactions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ walletAddress, limit: 10 }),
+          })
+        ])
         
-        if (res.ok) {
-          const data = await res.json()
-          const transactions = data.transactions || []
-          
-          if (beforeSignature) {
-            // Это запрос следующей страницы - добавляем к существующим транзакциям
-            setTransactions(prev => [...prev, ...transactions])
-          } else {
-            // Это первый запрос - заменяем транзакции
-            setTransactions(transactions)
-          }
-          
-          // Убираем старую логику NFT из транзакций
-          // setNfts(prev => beforeSignature ? [...prev, ...enrichedTransactions.filter((tx: any) => tx.type === "NFT")] : enrichedTransactions.filter((tx: any) => tx.type === "NFT"))
-          
-          // Сохраняем nextBeforeSignature для пагинации
-          setNextBeforeSignature(data.nextBeforeSignature)
-        } else {
-          throw new Error(`HTTP ${res.status}`)
+        let allTransactions: any[] = []
+        let nextSignature: string | undefined
+
+        // Обрабатываем PEcoin транзакции
+        if (pecoinRes.ok) {
+          const pecoinData = await pecoinRes.json()
+          const pecoinTransactions = (pecoinData.transactions || []).map((tx: any) => ({
+            ...tx,
+            type: "Token" // Убеждаемся что тип правильный
+          }))
+          allTransactions.push(...pecoinTransactions)
+          nextSignature = pecoinData.nextBeforeSignature
         }
+
+        // Обрабатываем NFT транзакции
+        if (nftRes.ok) {
+          const nftData = await nftRes.json()
+          const nftTransactions = (nftData.transactions || []).map((tx: any) => ({
+            ...tx,
+            // Преобразуем NFT данные в формат совместимый с TransactionTable
+            amount: 1, // NFT всегда 1 штука
+            nftName: tx.nftName,
+            sender: tx.from,
+            receiver: tx.to,
+            date: tx.date
+          }))
+          allTransactions.push(...nftTransactions)
+        }
+
+        // Сортируем все транзакции по дате (от новых к старым)
+        allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        
+        if (beforeSignature) {
+          // Это запрос следующей страницы - добавляем к существующим транзакциям
+          setTransactions(prev => [...prev, ...allTransactions])
+        } else {
+          // Это первый запрос - заменяем транзакции
+          setTransactions(allTransactions)
+        }
+        
+        // Сохраняем nextBeforeSignature для пагинации (используем от PEcoin API)
+        setNextBeforeSignature(nextSignature)
+        
       } catch (err) {
         console.error("Error fetching history:", err)
         setHistoryError("История транзакций временно недоступна")

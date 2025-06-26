@@ -69,6 +69,7 @@ export function TransactionTable({ transactions, entityType = "teams" }: Transac
             <th className="py-4 px-4 text-left font-display font-bold text-gray-600 dark:text-gray-300">Sender</th>
             <th className="py-4 px-4 text-left font-display font-bold text-gray-600 dark:text-gray-300">Receiver</th>
             <th className="py-4 px-4 text-left font-display font-bold text-gray-600 dark:text-gray-300">Amount/NFT</th>
+            <th className="py-4 px-4 text-left font-display font-bold text-gray-600 dark:text-gray-300">Comment</th>
             <th className="py-4 px-4 text-left font-display font-medium text-sm text-gray-500 dark:text-gray-400">Date & Time</th>
           </tr>
         </thead>
@@ -117,6 +118,15 @@ export function TransactionTable({ transactions, entityType = "teams" }: Transac
                     </div>
                     <span className="font-bold">{transaction.nftName}</span>
                   </div>
+                )}
+              </td>
+              <td className="py-4 px-4 text-sm text-gray-600 dark:text-gray-400 max-w-xs">
+                {transaction.memo ? (
+                  <span className="italic" title={transaction.memo}>
+                    {transaction.memo.length > 30 ? `${transaction.memo.substring(0, 30)}...` : transaction.memo}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 dark:text-gray-500">—</span>
                 )}
               </td>
               <td className="py-4 px-4 text-sm text-gray-500 dark:text-gray-400">
