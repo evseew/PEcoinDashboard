@@ -78,19 +78,21 @@ class ServerCache {
       // Обновляем статистику доступа
       cached.accessCount++
       cached.lastAccess = now
-      console.log(`🎯 Cache HIT: ${key} (${cached.accessCount} accesses)`)
+      const age = Math.round((now - cached.timestamp) / 1000)
+      console.log(`🎯 Cache HIT: ${key} (возраст: ${age}s, обращений: ${cached.accessCount})`)
       return cached.data
     }
 
     // Проверяем, нет ли уже выполняющегося запроса
     const pending = this.pendingRequests.get(key)
     if (pending) {
-      console.log(`⏳ Waiting for pending request: ${key}`)
+      console.log(`⏳ Ожидание выполняющегося запроса: ${key}`)
       return await pending
     }
 
     // Выполняем новый запрос
-    console.log(`🔄 Cache MISS: ${key} - fetching new data`)
+    const cacheAge = cached ? Math.round((now - cached.timestamp) / 1000) : 0
+    console.log(`🔄 Cache MISS: ${key} ${cached ? `(устарел на ${cacheAge}s)` : '(новый ключ)'} - загружаем данные`)
     const fetchPromise = this.executeFetch(key, fetcher, ttl)
     this.pendingRequests.set(key, fetchPromise)
 

@@ -41,6 +41,7 @@ export async function getTokenMetadata(tokenMint: string): Promise<{ image?: str
           method: "getTokenMetadata",
           params: [tokenMint],
         }),
+        signal: AbortSignal.timeout(5000) // 5 секунд timeout
       })
       const data = await res.json()
       if (data.result && data.result.logo) {
@@ -67,21 +68,11 @@ export async function getTokenMetadata(tokenMint: string): Promise<{ image?: str
 }
 
 /**
- * Получить баланс SPL-токена для owner и mint через Alchemy RPC
+ * Получить баланс SPL токена для кошелька
  */
-export async function getSplTokenBalance({
-  owner,
-  mint,
-  apiKey
-}: {
-  owner: string;
-  mint: string;
-  apiKey?: string;
-}): Promise<number | null> {
-  const key = apiKey ? (apiKey.startsWith("https://") ? apiKey.split("/").pop() : apiKey) : getAlchemyKey();
-  if (!key) return null;
-  const url = `https://solana-mainnet.g.alchemy.com/v2/${key}`;
-
+export async function getTokenBalance(owner: string, mint: string, apiKey: string): Promise<number> {
+  const startTime = Date.now()
+  const url = `https://solana-mainnet.g.alchemy.com/v2/${apiKey}`;
   const body = {
     jsonrpc: "2.0",
     id: 1,
@@ -93,29 +84,76 @@ export async function getSplTokenBalance({
     ]
   };
 
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-    const data = await res.json();
-    if (
-      data.result &&
-      data.result.value &&
-      data.result.value.length > 0
-    ) {
-      // Суммируем балансы по всем токен-аккаунтам
-      const sum = data.result.value.reduce((acc: number, tokenAccount: any) => {
-        const amount = tokenAccount.account.data.parsed.info.tokenAmount.uiAmount || 0;
-        return acc + amount;
-      }, 0);
-      return sum;
+  const MAX_RETRIES = 2
+  let lastError: Error | null = null
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const attemptStart = Date.now()
+    
+    try {
+      console.log(`[Alchemy] 🔄 Попытка ${attempt}/${MAX_RETRIES} для ${owner.slice(0,8)}...`)
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 секунд timeout
+      
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId)
+      
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+      }
+      
+      const data = await res.json();
+      const attemptTime = Date.now() - attemptStart
+      
+      if (data.error) {
+        console.error(`[Alchemy] ❌ API Error для ${owner.slice(0,8)}... за ${attemptTime}ms:`, data.error);
+        throw new Error(`Alchemy API error: ${data.error.message || data.error}`);
+      }
+      
+      const accounts = data.result?.value || [];
+      let totalBalance = 0;
+      
+      for (const account of accounts) {
+        const balance = account.account?.data?.parsed?.info?.tokenAmount?.uiAmount || 0;
+        totalBalance += balance;
+      }
+      
+      const totalTime = Date.now() - startTime
+      console.log(`[Alchemy] ✅ Баланс ${totalBalance} для ${owner.slice(0,8)}... за ${totalTime}ms (попытка ${attempt})`)
+      
+      return totalBalance;
+      
+    } catch (error) {
+      const attemptTime = Date.now() - attemptStart
+      lastError = error instanceof Error ? error : new Error(String(error))
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn(`[Alchemy] ⏰ Timeout ${attemptTime}ms для ${owner.slice(0,8)}... (попытка ${attempt})`)
+      } else {
+        console.warn(`[Alchemy] ⚠️ Ошибка ${attemptTime}ms для ${owner.slice(0,8)}... (попытка ${attempt}):`, error)
+      }
+      
+      // Если это последняя попытка, бросаем ошибку
+      if (attempt === MAX_RETRIES) {
+        const totalTime = Date.now() - startTime
+        console.error(`[Alchemy] ❌ Все попытки исчерпаны для ${owner.slice(0,8)}... за ${totalTime}ms`)
+        throw lastError
+      }
+      
+      // Пауза перед повторной попыткой
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
     }
-    return 0;
-  } catch (e) {
-    return null;
   }
+  
+  // Этот код никогда не должен выполниться, но для TypeScript
+  throw lastError || new Error('Unknown error')
 }
 
 /**
@@ -149,7 +187,8 @@ export async function getUserTokenAccounts({
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000) // 5 секунд timeout
     });
     const data = await res.json();
     if (data.result && data.result.value && data.result.value.length > 0) {

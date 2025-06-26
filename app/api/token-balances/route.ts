@@ -3,6 +3,8 @@ import { getCachedTokenBalances } from '@/lib/cached-token-balance'
 import { getAlchemyKey } from '@/lib/alchemy/solana'
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
+  
   try {
     const { wallets, mint } = await request.json()
     
@@ -13,10 +15,18 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    console.log(`[Token Balances API] Запрос балансов для ${wallets.length} кошельков`)
+    console.log(`[Token Balances API] ⏱️ Запрос балансов для ${wallets.length} кошельков`)
+    console.log(`[Token Balances API] 🌍 Environment: ${process.env.NODE_ENV}`)
     
+    const apiKeyStart = Date.now()
     const apiKey = getAlchemyKey()
+    console.log(`[Token Balances API] 🔑 API Key получен за ${Date.now() - apiKeyStart}ms`)
+    
+    const balancesStart = Date.now()
     const balances = await getCachedTokenBalances(wallets, mint, apiKey)
+    const balancesTime = Date.now() - balancesStart
+    
+    console.log(`[Token Balances API] 💰 Балансы получены за ${balancesTime}ms`)
     
     // Конвертируем Map в объект для JSON
     const balancesObject: Record<string, number> = {}
@@ -24,20 +34,28 @@ export async function POST(request: NextRequest) {
       balancesObject[wallet] = balance
     })
     
-    console.log(`[Token Balances API] Возвращено ${balances.size} балансов`)
-    
+    const totalTime = Date.now() - startTime
+    console.log(`[Token Balances API] ✅ Возвращено ${balances.size} балансов за ${totalTime}ms`)
+
     return NextResponse.json({
       success: true,
       balances: balancesObject,
-      cached: true
+      cached: true,
+      timing: {
+        total: totalTime,
+        balances: balancesTime,
+        walletsCount: wallets.length
+      }
     })
     
   } catch (error) {
-    console.error('[Token Balances API] Error:', error)
+    const totalTime = Date.now() - startTime
+    console.error(`[Token Balances API] ❌ Error after ${totalTime}ms:`, error)
     return NextResponse.json(
       { 
         error: 'Failed to fetch token balances',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
+        timing: { total: totalTime }
       },
       { status: 500 }
     )

@@ -160,7 +160,7 @@ export default function TeamsPage() {
           extraColumns={[
             { key: "ageDisplay", label: "Age" }
           ]}
-          showBalance={false}
+          showBalance={true}
           isLoading={isLoading}
         />
       </div>
