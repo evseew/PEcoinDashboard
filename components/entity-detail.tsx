@@ -259,54 +259,87 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
         console.log(`[EntityDetail] 🔄 Отправляю параллельные запросы...`)
         console.log(`[EntityDetail] 📦 Request body:`, requestBody)
 
-        const [pecoinRes, nftRes] = await Promise.all([
-          fetch("/api/pecoin-history", {
+        let allTransactions: any[] = []
+        let nextSignature: string | undefined
+
+        // Загружаем PEcoin транзакции с обработкой ошибок
+        try {
+          console.log(`[EntityDetail] 📤 Запрос PEcoin истории...`)
+          const pecoinRes = await fetch("/api/pecoin-history", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestBody),
-          }),
-          fetch("/api/nft-transactions", {
+          })
+          
+          console.log(`[EntityDetail] 📥 PEcoin ответ:`, {
+            status: pecoinRes.status,
+            ok: pecoinRes.ok,
+            statusText: pecoinRes.statusText
+          })
+
+          if (pecoinRes.ok) {
+            const pecoinData = await pecoinRes.json()
+            console.log(`[EntityDetail] ✅ PEcoin данные получены:`, {
+              transactionsCount: pecoinData.transactions?.length || 0,
+              hasNextSignature: !!pecoinData.nextBeforeSignature
+            })
+            
+            const pecoinTransactions = (pecoinData.transactions || []).map((tx: any) => ({
+              ...tx,
+              type: "Token" // Убеждаемся что тип правильный
+            }))
+            allTransactions.push(...pecoinTransactions)
+            nextSignature = pecoinData.nextBeforeSignature
+          } else {
+            console.error(`[EntityDetail] ❌ Ошибка PEcoin API:`, pecoinRes.status, pecoinRes.statusText)
+            const errorText = await pecoinRes.text()
+            console.error(`[EntityDetail] ❌ PEcoin Error details:`, errorText)
+          }
+        } catch (pecoinError) {
+          console.error(`[EntityDetail] ❌ Исключение при запросе PEcoin истории:`, pecoinError)
+        }
+
+        // Загружаем NFT транзакции с обработкой ошибок
+        try {
+          console.log(`[EntityDetail] 📤 Запрос NFT транзакций...`)
+          const nftRes = await fetch("/api/nft-transactions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ walletAddress, limit: 10 }),
           })
-        ])
-        
-        console.log(`[EntityDetail] 📡 Получены ответы:`, {
-          pecoinStatus: pecoinRes.status,
-          pecoinOk: pecoinRes.ok,
-          nftStatus: nftRes.status, 
-          nftOk: nftRes.ok
-        })
-        
-        let allTransactions: any[] = []
-        let nextSignature: string | undefined
+          
+          console.log(`[EntityDetail] 📥 NFT ответ:`, {
+            status: nftRes.status,
+            ok: nftRes.ok,
+            statusText: nftRes.statusText
+          })
 
-        // Обрабатываем PEcoin транзакции
-        if (pecoinRes.ok) {
-          const pecoinData = await pecoinRes.json()
-          const pecoinTransactions = (pecoinData.transactions || []).map((tx: any) => ({
-            ...tx,
-            type: "Token" // Убеждаемся что тип правильный
-          }))
-          allTransactions.push(...pecoinTransactions)
-          nextSignature = pecoinData.nextBeforeSignature
+          if (nftRes.ok) {
+            const nftData = await nftRes.json()
+            console.log(`[EntityDetail] ✅ NFT данные получены:`, {
+              transactionsCount: nftData.transactions?.length || 0
+            })
+            
+            const nftTransactions = (nftData.transactions || []).map((tx: any) => ({
+              ...tx,
+              // Преобразуем NFT данные в формат совместимый с TransactionTable
+              amount: 1, // NFT всегда 1 штука
+              nftName: tx.nftName,
+              sender: tx.from,
+              receiver: tx.to,
+              date: tx.date
+            }))
+            allTransactions.push(...nftTransactions)
+          } else {
+            console.error(`[EntityDetail] ❌ Ошибка NFT API:`, nftRes.status, nftRes.statusText)
+            const errorText = await nftRes.text()
+            console.error(`[EntityDetail] ❌ NFT Error details:`, errorText)
+          }
+        } catch (nftError) {
+          console.error(`[EntityDetail] ❌ Исключение при запросе NFT транзакций:`, nftError)
         }
 
-        // Обрабатываем NFT транзакции
-        if (nftRes.ok) {
-          const nftData = await nftRes.json()
-          const nftTransactions = (nftData.transactions || []).map((tx: any) => ({
-            ...tx,
-            // Преобразуем NFT данные в формат совместимый с TransactionTable
-            amount: 1, // NFT всегда 1 штука
-            nftName: tx.nftName,
-            sender: tx.from,
-            receiver: tx.to,
-            date: tx.date
-          }))
-          allTransactions.push(...nftTransactions)
-        }
+        console.log(`[EntityDetail] 📊 Всего транзакций загружено: ${allTransactions.length}`)
 
         // Сортируем все транзакции по дате (от новых к старым)
         allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -322,8 +355,10 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
         // Сохраняем nextBeforeSignature для пагинации (используем от PEcoin API)
         setNextBeforeSignature(nextSignature)
         
+        console.log(`[EntityDetail] ✅ fetchHistory завершён успешно для ${walletAddress}`)
+        
       } catch (err) {
-        console.error("Error fetching history:", err)
+        console.error(`[EntityDetail] ❌ Критическая ошибка в fetchHistory:`, err)
         setHistoryError("История транзакций временно недоступна")
         if (!beforeSignature) {
           // Только очищаем если это первый запрос
@@ -342,30 +377,49 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
       hasEntity: !!entity,
       entityName: entity?.name,
       walletAddress: entity?.walletAddress,
-      entityType: typeof entity
+      entityType: typeof entity,
+      entityId: entity?.id
     })
     
-    if (entity?.walletAddress) {
+    if (entity && entity.walletAddress && entity.walletAddress.trim() !== "") {
       console.log(`[EntityDetail] 🔍 Пользователь открыл детали ${entity.name}, загружаю историю и NFT...`)
       console.log(`[EntityDetail] 🎯 Wallet Address: ${entity.walletAddress}`)
+      console.log(`[EntityDetail] 🎯 Entity ID: ${entity.id}`)
+      
+      // Очищаем предыдущие данные
+      setTransactions([])
+      setNfts([])
+      setHistoryError(null)
+      setNftsError(null)
       
       // Запускаем загрузку истории с дополнительным логированием
+      console.log(`[EntityDetail] 🚀 Запускаю fetchHistory...`)
       fetchHistory(entity.walletAddress).then(() => {
         console.log(`[EntityDetail] ✅ История загружена для ${entity.name}`)
       }).catch((error) => {
         console.error(`[EntityDetail] ❌ Ошибка загрузки истории для ${entity.name}:`, error)
+        setHistoryError("Не удалось загрузить историю транзакций")
       })
       
       // Запускаем загрузку NFT
+      console.log(`[EntityDetail] 🚀 Запускаю fetchNFTCollection...`)
       fetchNFTCollection(entity.walletAddress).then(() => {
         console.log(`[EntityDetail] ✅ NFT загружены для ${entity.name}`)
       }).catch((error) => {
         console.error(`[EntityDetail] ❌ Ошибка загрузки NFT для ${entity.name}:`, error)
+        setNftsError("Не удалось загрузить NFT коллекцию")
       })
     } else {
-      console.log(`[EntityDetail] ⚠️ Нет entity или walletAddress для загрузки данных`)
+      console.log(`[EntityDetail] ⚠️ Нет entity или walletAddress для загрузки данных. Entity:`, entity)
+      if (!entity) {
+        console.log(`[EntityDetail] ⚠️ Entity отсутствует`)
+      } else if (!entity.walletAddress) {
+        console.log(`[EntityDetail] ⚠️ WalletAddress отсутствует в entity`)
+      } else if (entity.walletAddress.trim() === "") {
+        console.log(`[EntityDetail] ⚠️ WalletAddress пустой`)
+      }
     }
-  }, [entity?.walletAddress, fetchHistory, fetchNFTCollection])
+  }, [entity?.walletAddress, entity?.id, fetchHistory, fetchNFTCollection])
 
   const loadMoreTransactions = async () => {
     if (!nextBeforeSignature || !entity?.walletAddress || isLoadingMore) return
@@ -636,13 +690,46 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
                     <span className="text-sm text-gray-500 dark:text-gray-400">Загружаем...</span>
                   </div>
                 )}
+                {!historyLoading && !historyError && transactions.length > 0 && (
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${bgColor} ${textColor}`}>
+                    {transactions.length} транзакци{transactions.length === 1 ? 'я' : transactions.length < 5 ? 'и' : 'й'}
+                  </div>
+                )}
               </div>
+              
               {historyError ? (
-                <div className="text-red-500 mb-4">{historyError}</div>
-              ) : null}
-              <TransactionTable transactions={transactions} entityType={entityType} />
+                <div className="text-center py-10">
+                  <div className="text-red-500 mb-2">{historyError}</div>
+                  <motion.button
+                    onClick={() => entity?.walletAddress && fetchHistory(entity.walletAddress)}
+                    className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                      isTeam 
+                        ? "border-[#E63946] text-[#E63946] hover:bg-[#E63946] hover:text-white" 
+                        : "border-[#6ABECD] text-[#6ABECD] hover:bg-[#6ABECD] hover:text-white"
+                    }`}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Попробовать снова
+                  </motion.button>
+                </div>
+              ) : historyLoading && transactions.length === 0 ? (
+                <div className="flex items-center justify-center py-10">
+                  <motion.div
+                    className={`w-8 h-8 border-4 border-t-transparent rounded-full ${isTeam ? "border-[#E63946]" : "border-[#6ABECD]"}`}
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                  />
+                  <span className="ml-3 text-gray-600 dark:text-gray-400">Загружаем историю транзакций...</span>
+                </div>
+              ) : (
+                <div className="px-2">
+                  <TransactionTable transactions={transactions} entityType={entityType} />
+                </div>
+              )}
+              
               {/* Кнопка "Загрузить ещё" для пагинации */}
-              {nextBeforeSignature && (
+              {nextBeforeSignature && !historyError && (
                 <div className="flex justify-center mt-6">
                   <motion.button
                     onClick={loadMoreTransactions}
