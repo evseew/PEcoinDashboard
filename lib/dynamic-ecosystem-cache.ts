@@ -30,7 +30,7 @@ class DynamicEcosystemCache {
     lastParticipantsRefresh: 0
   }
   
-  private readonly GLOBAL_REFRESH_INTERVAL = 5 * 60 * 1000 // 5 минут
+  private readonly GLOBAL_REFRESH_INTERVAL = 10 * 60 * 1000 // 10 минут (было 5) - снижаем нагрузку на API
   private readonly PARTICIPANTS_REFRESH_INTERVAL = 30 * 60 * 1000 // 30 минут (участники меняются реже)
   private readonly PECOIN_MINT = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
   private refreshTimer?: NodeJS.Timeout
@@ -155,14 +155,15 @@ class DynamicEcosystemCache {
         return
       }
       
-      // 1. Загружаем балансы всех участников batch-запросом
+      // 1. ПРИОРИТЕТ: Загружаем балансы всех участников batch-запросом
       await this.refreshAllBalances()
       
       // 2. Загружаем NFT для всех участников параллельно
       await this.refreshAllNFTs()
       
-      // 3. Загружаем последние транзакции для активных участников
-      await this.refreshAllTransactions()
+      // 3. ОТКЛЮЧЕНО: Транзакции грузятся только по требованию для экономии ресурсов
+      // await this.refreshAllTransactions() 
+      console.log(`⚠️ Загрузка транзакций отключена в автообновлении (доступна по требованию)`)
       
       this.ecosystemData.lastUpdate = Date.now()
       const totalTime = Date.now() - startTime
@@ -249,48 +250,6 @@ class DynamicEcosystemCache {
         await new Promise(resolve => setTimeout(resolve, 1500))
       }
     }
-  }
-
-  /**
-   * Загрузка последних транзакций для активных участников
-   */
-  private async refreshAllTransactions(): Promise<void> {
-    // Загружаем транзакции только для участников с балансом > 0
-    const activeParticipants = this.ecosystemData.participants.filter(p => 
-      (this.ecosystemData.balances.get(p.walletAddress) || 0) > 0
-    )
-    
-    const baseUrl = getBaseUrl()
-    
-    if (activeParticipants.length === 0) return
-    
-    console.log(`🔄 Загрузка транзакций для ${activeParticipants.length} активных участников`)
-    
-    const promises = activeParticipants.map(async (participant) => {
-      try {
-        const response = await fetch(`${baseUrl}/api/pecoin-history`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            walletAddress: participant.walletAddress,
-            limit: 10 
-          })
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          this.ecosystemData.transactions.set(participant.walletAddress, data.transactions || [])
-          return data.transactions?.length || 0
-        }
-      } catch (error) {
-        console.error(`❌ Ошибка загрузки транзакций для ${participant.name}:`, error)
-        return 0
-      }
-    })
-    
-    const results = await Promise.all(promises)
-    const totalTxs = results.reduce((sum, count) => sum + count, 0)
-    console.log(`✅ Загружено ${totalTxs} транзакций`)
   }
 
   /**
@@ -438,7 +397,7 @@ class DynamicEcosystemCache {
     if (this.refreshTimer) clearInterval(this.refreshTimer)
     if (this.participantsTimer) clearInterval(this.participantsTimer)
     
-    // Обновление данных каждые 5 минут
+    // Обновление данных каждые 10 минут
     this.refreshTimer = setInterval(() => {
       console.log(`⏰ Периодическое обновление данных экосистемы`)
       this.refreshAllData()
@@ -463,6 +422,22 @@ class DynamicEcosystemCache {
       clearInterval(this.participantsTimer)
       this.participantsTimer = undefined
     }
+  }
+
+  /**
+   * Загрузка транзакций по требованию (только когда пользователь открывает детали участника)
+   */
+  async loadParticipantTransactionsOnDemand(walletAddress: string): Promise<any[]> {
+    // Проверяем кэш сначала
+    const cached = this.ecosystemData.transactions.get(walletAddress)
+    if (cached && cached.length > 0) {
+      console.log(`🎯 Транзакции для ${walletAddress} уже в кэше`)
+      return cached
+    }
+    
+    console.log(`🔄 Загружаю транзакции для ${walletAddress} по требованию`)
+    await this.refreshParticipantTransactions(walletAddress)
+    return this.ecosystemData.transactions.get(walletAddress) || []
   }
 }
 

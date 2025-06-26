@@ -112,6 +112,7 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [nftsLoading, setNftsLoading] = useState(false)
   const [nftsError, setNftsError] = useState<string | null>(null)
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   const isTeam = entityType === "teams" || entityType === "team"
 
@@ -239,11 +240,15 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
     []
   )
 
-  // Получение всех транзакций (PEcoin + NFT)
+  // Получение всех транзакций (PEcoin + NFT) - ЛЕНИВАЯ ЗАГРУЗКА
   const fetchHistory = useCallback(
     async (walletAddress: string, beforeSignature?: string) => {
       setHistoryError(null)
+      setHistoryLoading(true) // Явно показываем загрузку
+      
       try {
+        console.log(`[EntityDetail] 📊 Загружаю историю для ${walletAddress}...`)
+        
         // Загружаем PEcoin транзакции
         const requestBody: any = { walletAddress, limit: 10 }
         if (beforeSignature) {
@@ -313,17 +318,20 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
           // Только очищаем если это первый запрос
           setTransactions([])
         }
+      } finally {
+        setHistoryLoading(false)
       }
     },
     []
   )
 
+  // Автоматически загружаем историю при открытии детальной страницы участника
   useEffect(() => {
-    if (entity && entity.walletAddress) {
-      fetchHistory(entity.walletAddress)
-      fetchNFTCollection(entity.walletAddress)
+    if (entity?.wallet_address) {
+      console.log(`[EntityDetail] 🔍 Пользователь открыл детали ${entity.name}, загружаю историю...`)
+      fetchHistory(entity.wallet_address)
     }
-  }, [entity, fetchHistory, fetchNFTCollection])
+  }, [entity?.wallet_address, fetchHistory])
 
   const loadMoreTransactions = async () => {
     if (!nextBeforeSignature || !entity?.walletAddress || isLoadingMore) return
@@ -572,16 +580,28 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
               {isTeam && (
                 <div className="absolute -right-10 -bottom-10 w-32 h-32 rounded-full bg-gradient-to-br from-[#FF9E7D]/20 to-[#FFD166]/20 blur-xl"></div>
               )}
-              <div className="flex items-center mb-6">
-                <motion.div
-                  className="mr-3"
-                  whileHover={{ scale: 1.1 }}
-                  animate={isTeam ? { scale: [1, 1.1, 1], rotate: [0, 5, 0] } : {}}
-                  transition={isTeam ? { duration: 3, repeat: Number.POSITIVE_INFINITY } : {}}
-                >
-                  <CampIcon type="social" />
-                </motion.div>
-                <h2 className={`text-2xl font-display font-bold ${isTeam ? "text-[#E63946]" : ""}`}>Transaction History</h2>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <motion.div
+                    className="mr-3"
+                    whileHover={{ scale: 1.1 }}
+                    animate={isTeam ? { scale: [1, 1.1, 1], rotate: [0, 5, 0] } : {}}
+                    transition={isTeam ? { duration: 3, repeat: Number.POSITIVE_INFINITY } : {}}
+                  >
+                    <CampIcon type="social" />
+                  </motion.div>
+                  <h2 className={`text-2xl font-display font-bold ${isTeam ? "text-[#E63946]" : ""}`}>Transaction History</h2>
+                </div>
+                {historyLoading && (
+                  <div className="flex items-center">
+                    <motion.div
+                      className={`w-5 h-5 border-2 border-t-transparent rounded-full mr-2 ${isTeam ? "border-[#E63946]" : "border-[#6ABECD]"}`}
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                    />
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Загружаем...</span>
+                  </div>
+                )}
               </div>
               {historyError ? (
                 <div className="text-red-500 mb-4">{historyError}</div>
