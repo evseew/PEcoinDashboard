@@ -11,7 +11,7 @@ interface Entity {
   id: string
   name: string
   walletAddress: string
-  balance: number
+  balance?: number
   logo?: string | null
   description?: string
   [key: string]: unknown

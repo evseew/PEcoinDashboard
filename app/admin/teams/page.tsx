@@ -147,7 +147,6 @@ export default function TeamsPage() {
               walletAddress: team.wallet_address,
               logo: team.logo_url,
               description: team.description,
-              balance: 0,
               ageDisplay: ageDisplay,
               ageRangeMin: team.age_range_min,
               ageRangeMax: team.age_range_max,

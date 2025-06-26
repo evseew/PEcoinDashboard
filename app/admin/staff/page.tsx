@@ -12,7 +12,8 @@ interface Staff {
   walletAddress: string
   logo?: string | null
   description?: string
-  balance: number
+  balance?: number
+  [key: string]: unknown
 }
 
 export default function StaffPage() {
@@ -32,7 +33,6 @@ export default function StaffPage() {
         walletAddress: person.wallet_address,
         logo: person.logo_url,
         description: person.description,
-        balance: 0,
       }))
     )
     setIsLoading(false)

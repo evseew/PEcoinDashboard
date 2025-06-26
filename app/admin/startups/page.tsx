@@ -10,7 +10,7 @@ interface Startup {
   id: string
   name: string
   walletAddress: string
-  balance: number
+  balance?: number
   logo?: string | null
   description?: string
   achievements: number
@@ -39,7 +39,6 @@ export default function StartupsPage() {
         logo: startup.logo_url,
         description: startup.description,
         achievements: startup.achievements || 0,
-        balance: 0,
         age_range_min: startup.age_range_min,
         age_range_max: startup.age_range_max,
         age_display: startup.age_display,
@@ -157,7 +156,6 @@ export default function StartupsPage() {
               walletAddress: startup.walletAddress,
               logo: startup.logo,
               description: startup.description,
-              balance: 0,
               ageDisplay: ageDisplay,
               ageRangeMin: startup.age_range_min,
               ageRangeMax: startup.age_range_max,
