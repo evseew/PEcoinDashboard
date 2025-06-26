@@ -22,12 +22,19 @@ export default async function StartupsPage() {
     }))
   )
 
+  // Сортируем стартапы по возрасту от младших к старшим
+  const sortedStartups = startupsWithLogo.sort((a, b) => {
+    const ageA = a.age_range_min || 999 // Стартапы без возраста идут в конец
+    const ageB = b.age_range_min || 999
+    return ageA - ageB
+  })
+
   return (
     <main className="container mx-auto py-8 px-4 md:px-8">
       <h1 className="text-3xl font-bold mb-6">Стартапы</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {startupsWithLogo && startupsWithLogo.length > 0 ? (
-          startupsWithLogo.map(startup => (
+        {sortedStartups && sortedStartups.length > 0 ? (
+          sortedStartups.map(startup => (
             <Link
               key={startup.id}
               href={`/startups/${startup.id}`}

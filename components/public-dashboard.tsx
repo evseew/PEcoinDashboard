@@ -28,7 +28,7 @@ export function PublicDashboard() {
   const [teams, setTeams] = useState<any[]>([])
   const [startups, setStartups] = useState<any[]>([])
   const [teamSort, setTeamSort] = useState<string>("age")
-  const [startupSort, setStartupSort] = useState<string>("name")
+  const [startupSort, setStartupSort] = useState<string>("age")
   const [activeTab, setActiveTab] = useState<string>("all")
   const isMobile = useMobile()
   const [totalTeamCoins, setTotalTeamCoins] = useState<number | null>(null)
@@ -89,8 +89,15 @@ export function PublicDashboard() {
             return ageA - ageB
           })
           
+          // Сортируем стартапы по возрасту от младших к старшим по умолчанию
+          const sortedStartups = startupsWithLogo.sort((a, b) => {
+            const ageA = a.age_range_min || 999 // Стартапы без возраста идут в конец
+            const ageB = b.age_range_min || 999
+            return ageA - ageB
+          })
+          
           setTeams(sortedTeams)
-          setStartups(startupsWithLogo)
+          setStartups(sortedStartups)
           
           console.log(`[PublicDashboard] Данные загружены за ${Date.now() - startTime}ms`)
         }

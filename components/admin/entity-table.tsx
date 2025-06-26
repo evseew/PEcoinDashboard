@@ -45,7 +45,7 @@ export function EntityTable({
   isLoading = false,
   showBalance = false,
 }: EntityTableProps) {
-  const [sortField, setSortField] = useState<string>("name")
+  const [sortField, setSortField] = useState<string>((entityType === "startup" || entityType === "team") ? "ageRangeMin" : "name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -66,8 +66,14 @@ export function EntityTable({
   }
 
   const sortedEntities = [...entities].sort((a, b) => {
-    const aValue = a[sortField]
-    const bValue = b[sortField]
+    let aValue = a[sortField]
+    let bValue = b[sortField]
+
+    // Для сортировки по возрасту, обрабатываем null/undefined как большие значения (в конец списка)
+    if (sortField === "ageRangeMin") {
+      aValue = aValue ?? 999
+      bValue = bValue ?? 999
+    }
 
     if (typeof aValue === "string" && typeof bValue === "string") {
       return sortDirection === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
