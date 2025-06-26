@@ -1,8 +1,9 @@
 import { Edit, Trash2 } from "lucide-react"
-// import { useSplTokenBalance } from "@/hooks/use-spl-token-balance" // УДАЛЕНО: используем централизованную загрузку
+import { useSplTokenBalance } from "@/hooks/use-spl-token-balance"
 import { useNftCount } from "@/hooks/use-nft-count"
 import { useEffect, useState } from "react"
 import { signedUrlCache } from "@/lib/signed-url-cache"
+import Image from "next/image"
 
 interface EntityTableRowProps {
   entity: {
@@ -10,37 +11,32 @@ interface EntityTableRowProps {
     name: string
     walletAddress: string
     logo?: string | null
-    balance?: number // Баланс теперь приходит как пропс
-    [key: string]: any
+    [key: string]: unknown
   }
-  pecoinMint: string
-  pecoinImg: string
-  alchemyApiKey: string
   extraColumns: { key: string; label: string }[]
   showBalance?: boolean
-  balanceLoading?: boolean // Статус загрузки баланса
-  handleEdit: (entity: any) => void
-  handleDelete: (entity: any) => void
+  onEdit: (entity: EntityTableRowProps['entity']) => void
+  onDelete: (entity: EntityTableRowProps['entity']) => void
 }
 
 export function EntityTableRow({ 
   entity, 
-  pecoinMint, 
-  pecoinImg, 
-  alchemyApiKey, 
   extraColumns, 
   showBalance = true, 
-  balanceLoading = false,
-  handleEdit, 
-  handleDelete 
+  onEdit, 
+  onDelete 
 }: EntityTableRowProps) {
-  // const { balance, loading } = useSplTokenBalance(entity.walletAddress, pecoinMint, alchemyApiKey) // УДАЛЕНО
+  // Константы для PEcoin
+  const pecoinMint = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
+  const pecoinImg = "/images/pecoin.png"
+  
+  // Индивидуальная загрузка баланса для каждой строки
+  const { balance, loading: balanceLoading } = useSplTokenBalance(entity.walletAddress, pecoinMint)
   const { nftCount, loading: nftLoading } = useNftCount(entity.walletAddress)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchLogoUrl() {
-      // Используем общую утилиту кэширования signed URLs
       const url = await signedUrlCache.getSignedUrl(entity.logo || null)
       setLogoUrl(url)
     }
@@ -53,9 +49,11 @@ export function EntityTableRow({
         <div className="flex items-center">
           <div className="h-8 w-8 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 mr-3 flex-shrink-0">
             {logoUrl ? (
-              <img
+              <Image
                 src={logoUrl || "/placeholder.svg"}
                 alt={entity.name}
+                width={32}
+                height={32}
                 className="h-full w-full object-cover rounded-full"
               />
             ) : (
@@ -74,10 +72,20 @@ export function EntityTableRow({
         <td className="px-4 py-3 whitespace-nowrap">
           <div className="flex items-center">
             <div className="w-4 h-4 mr-1">
-              <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
+              <Image 
+                src={pecoinImg} 
+                alt="PEcoin" 
+                width={16}
+                height={16}
+                className="w-full h-full object-cover rounded-full bg-transparent" 
+              />
             </div>
             <span className="text-sm">
-              {balanceLoading ? "..." : entity.balance !== undefined ? entity.balance.toLocaleString() : "0"}
+              {balanceLoading ? (
+                <div className="h-4 w-12 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+              ) : (
+                (balance !== null ? balance.toLocaleString() : "0")
+              )}
             </span>
           </div>
         </td>
@@ -89,27 +97,31 @@ export function EntityTableRow({
               <div className="flex items-center">
                 <span className="text-purple-500 mr-1">🖼️</span>
                 <span>
-                  {nftLoading ? "..." : nftCount !== null ? nftCount : "0"}
+                  {nftLoading ? (
+                    <div className="h-4 w-8 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
+                  ) : (
+                    (nftCount !== null ? nftCount : "0")
+                  )}
                 </span>
               </div>
             )
             : column.key === 'achievements' 
-            ? (entity[column.key] || 0)
-            : entity[column.key]
+            ? String(entity[column.key] || 0)
+            : String(entity[column.key] || "")
           }
         </td>
       ))}
       <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
         <div className="flex justify-end space-x-2">
           <button
-            onClick={() => handleEdit(entity)}
+            onClick={() => onEdit(entity)}
             className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-[#FF6B6B] dark:hover:text-[#FF6B6B]"
             aria-label="Edit"
           >
             <Edit className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleDelete(entity)}
+            onClick={() => onDelete(entity)}
             className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-red-500 dark:hover:text-red-500"
             aria-label="Delete"
           >

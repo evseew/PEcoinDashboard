@@ -1,12 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Edit, Trash2, ArrowUpDown, Plus } from "lucide-react"
+import { useState } from "react"
+import { ArrowUpDown, Plus } from "lucide-react"
 import { motion } from "framer-motion"
 import { EntityFormModal } from "./entity-form-modal"
 import { DeleteConfirmationModal } from "./delete-confirmation-modal"
-import { useTokenImageUrl } from "@/hooks/token-image-provider"
-// import { useSplTokenBalance } from "@/hooks/use-spl-token-balance" // УДАЛЕНО: используем централизованную загрузку
 import { EntityTableRow } from "./entity-table-row"
 
 interface Entity {
@@ -16,15 +14,15 @@ interface Entity {
   balance: number
   logo?: string | null
   description?: string
-  [key: string]: any
+  [key: string]: unknown
 }
 
 interface EntityTableProps {
   title: string
   entities: Entity[]
   entityType: "team" | "startup" | "staff"
-  onCreateEntity: (data: any) => Promise<void>
-  onUpdateEntity: (id: string, data: any) => Promise<void>
+  onCreateEntity: (data: Partial<Entity>) => Promise<void>
+  onUpdateEntity: (id: string, data: Partial<Entity>) => Promise<void>
   onDeleteEntity: (id: string) => Promise<void>
   extraColumns?: {
     key: string
@@ -51,60 +49,6 @@ export function EntityTable({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedEntity, setSelectedEntity] = useState<Entity | null>(null)
-  
-  // Централизованная загрузка балансов
-  const [balances, setBalances] = useState<Record<string, number>>({})
-  const [balancesLoading, setBalancesLoading] = useState(false)
-
-  const pecoinMint = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
-  const pecoinImg = useTokenImageUrl(pecoinMint, "/images/pecoin.png")
-  const alchemyApiKey = "VYK2v9vubZLxKwE9-ASUeQC6b1-zaVb1"
-
-  // Централизованная загрузка балансов для всех участников
-  useEffect(() => {
-    const fetchAllBalances = async () => {
-      if (!showBalance || entities.length === 0) return
-      
-      setBalancesLoading(true)
-      
-      try {
-        // Собираем все адреса кошельков
-        const wallets = entities
-          .filter(entity => entity.walletAddress)
-          .map(entity => entity.walletAddress)
-        
-        if (wallets.length === 0) {
-          setBalancesLoading(false)
-          return
-        }
-        
-        console.log(`[EntityTable] Загружаю балансы для ${wallets.length} кошельков`)
-        
-        // Один запрос для всех кошельков
-        const response = await fetch('/api/token-balances', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            wallets, 
-            mint: pecoinMint 
-          }),
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          setBalances(data.balances || {})
-        } else {
-          console.error('[EntityTable] Ошибка загрузки балансов:', response.status)
-        }
-      } catch (error) {
-        console.error('[EntityTable] Критическая ошибка загрузки балансов:', error)
-      } finally {
-        setBalancesLoading(false)
-      }
-    }
-    
-    fetchAllBalances()
-  }, [entities, showBalance, pecoinMint])
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -116,8 +60,8 @@ export function EntityTable({
   }
 
   const sortedEntities = [...entities].sort((a, b) => {
-    let aValue = a[sortField]
-    let bValue = b[sortField]
+    let aValue: unknown = a[sortField]
+    let bValue: unknown = b[sortField]
 
     // Для сортировки по возрасту, обрабатываем null/undefined как большие значения (в конец списка)
     if (sortField === "ageRangeMin") {
@@ -129,8 +73,11 @@ export function EntityTable({
       return sortDirection === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
     }
 
-    if (aValue < bValue) return sortDirection === "asc" ? -1 : 1
-    if (aValue > bValue) return sortDirection === "asc" ? 1 : -1
+    if (typeof aValue === "number" && typeof bValue === "number") {
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1
+    }
+
     return 0
   })
 
@@ -144,7 +91,7 @@ export function EntityTable({
     setIsDeleteModalOpen(true)
   }
 
-  const handleUpdateEntity = async (data: any) => {
+  const handleUpdateEntity = async (data: Partial<Entity>) => {
     if (selectedEntity) {
       await onUpdateEntity(selectedEntity.id, data)
     }
@@ -194,16 +141,10 @@ export function EntityTable({
                 </th>
                 {showBalance && (
                   <th
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
-                    onClick={() => handleSort("balance")}
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                   >
                     <div className="flex items-center">
-                      <span>Balance</span>
-                      <ArrowUpDown
-                        className={`ml-1 h-3 w-3 ${
-                          sortField === "balance" ? "text-[#FF6B6B]" : "text-gray-400 dark:text-gray-500"
-                        }`}
-                      />
+                      <span>PEcoin Balance</span>
                     </div>
                   </th>
                 )}
@@ -230,43 +171,44 @@ export function EntityTable({
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {isLoading ? (
-                <tr>
-                  <td
-                    colSpan={(showBalance ? 4 : 3) + extraColumns.length}
-                    className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
-                  >
-                    <div className="flex justify-center items-center">
-                      <div className="w-6 h-6 border-2 border-[#FF6B6B] border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Loading...
-                    </div>
-                  </td>
-                </tr>
-              ) : sortedEntities.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={(showBalance ? 4 : 3) + extraColumns.length}
-                    className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
-                  >
-                    No {entityType === "team" ? "teams" : entityType === "startup" ? "startups" : "staff members"}{" "}
-                    found.
-                  </td>
-                </tr>
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={`skeleton-${i}`} className="animate-pulse">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-600 mr-3"></div>
+                        <div className="h-4 w-24 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="h-4 w-20 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                    </td>
+                    {showBalance && (
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="h-4 w-16 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                      </td>
+                    )}
+                    {extraColumns.map((column) => (
+                      <td key={column.key} className="px-4 py-3 whitespace-nowrap">
+                        <div className="h-4 w-12 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                      </td>
+                    ))}
+                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                      <div className="flex justify-end space-x-2">
+                        <div className="h-6 w-6 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                        <div className="h-6 w-6 bg-gray-200 dark:bg-gray-600 rounded"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               ) : (
-                sortedEntities.map((entity) => (
+                sortedEntities.map(entity => (
                   <EntityTableRow
                     key={entity.id}
-                    entity={{
-                      ...entity,
-                      balance: balances[entity.walletAddress] || 0
-                    }}
-                    pecoinMint={pecoinMint}
-                    pecoinImg={pecoinImg}
-                    alchemyApiKey={alchemyApiKey}
-                    extraColumns={extraColumns}
+                    entity={entity}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
                     showBalance={showBalance}
-                    balanceLoading={balancesLoading}
-                    handleEdit={handleEdit}
-                    handleDelete={handleDelete}
+                    extraColumns={extraColumns}
                   />
                 ))
               )}
