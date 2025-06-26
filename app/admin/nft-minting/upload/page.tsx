@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useNFTCollections } from '@/hooks/use-nft-collections'
+import { useHybridNft } from '@/hooks/use-hybrid-nft'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,6 +34,7 @@ import {
   XCircle,
   Loader2
 } from 'lucide-react'
+import { validateNFTMetadata, logValidationResults, createValidNFTMetadata, NFTMetadata } from '@/lib/nft-validation'
 
 interface UploadedFile {
   id: string
@@ -57,6 +59,8 @@ interface MintingProgress {
   estimatedTimeLeft: number
 }
 
+// Используем импортированные утилиты из lib/nft-validation.ts
+
 // Теперь используем реальные коллекции из базы данных
 
 export default function NFTUploadPage() {
@@ -65,6 +69,7 @@ export default function NFTUploadPage() {
   
   // Загружаем реальные коллекции из базы данных
   const { collections, loading: collectionsLoading, getActiveCollections } = useNFTCollections()
+  const { mintSingle } = useHybridNft()
   
   const [dragActive, setDragActive] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
@@ -74,7 +79,7 @@ export default function NFTUploadPage() {
   const [isMinting, setIsMinting] = useState(false)
   const [mintingProgress, setMintingProgress] = useState<MintingProgress | null>(null)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  // Удаляем неиспользуемую переменную - imageGatewayUrl теперь локальная в каждой итерации
 
   // Получаем только активные коллекции доступные для минтинга
   const availableCollections = getActiveCollections().filter(c => c.allow_minting)
@@ -189,13 +194,47 @@ export default function NFTUploadPage() {
       estimatedTimeLeft: 0
     })
 
+    console.log('[NFTUpload] Начинаем реальный минтинг через гибридный API')
+    console.log('[NFTUpload] Файлов для минтинга:', validFiles.length, 'Всего NFT:', totalNFTs)
+    console.log('[NFTUpload] Выбранная коллекция:', selectedCollection)
+    
+    let processedCount = 0
+    
+    // Первый (устаревший) цикл обработки validFiles с созданием двойных JSON удалён
+    // Оставлен только второй цикл ниже, который формирует корректный единственный JSON
+    // Проверяем доступность коллекции на external API (сохраняем для совместимости)
+    try {
+      const collectionsResponse = await fetch(`${process.env.NEXT_PUBLIC_EXTERNAL_API_URL}/api/collections`, {
+        headers: {
+          'x-api-key': process.env.NEXT_PUBLIC_EXTERNAL_API_KEY || ''
+        }
+      })
+      
+      if (collectionsResponse.ok) {
+        const collectionsData = await collectionsResponse.json()
+        console.log('[NFTUpload] Доступные коллекции на external API:', collectionsData)
+        
+        if (collectionsData.success && collectionsData.data?.collections) {
+          const externalCollections = collectionsData.data.collections
+          const collectionExists = externalCollections.find((c: any) => c.id === selectedCollection)
+          
+          if (!collectionExists) {
+            console.warn('[NFTUpload] ВНИМАНИЕ: Коллекция не найдена на external API, используем internal fallback')
+            console.log('[NFTUpload] Доступные external коллекции:', externalCollections.map((c: any) => ({ id: c.id, name: c.name })))
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[NFTUpload] Не удалось проверить коллекции на external API:', error)
+    }
+
     try {
       let processedNFTs = 0
       
       for (const file of validFiles) {
         if (controller.signal.aborted) break
         
-        // Симуляция процесса для каждой копии
+        // Реальный минтинг для каждой копии
         for (let copyIndex = 0; copyIndex < file.copies; copyIndex++) {
           if (controller.signal.aborted) break
           
@@ -207,22 +246,159 @@ export default function NFTUploadPage() {
             percentage: Math.round((processedNFTs / totalNFTs) * 100)
           } : null)
 
-          // Этап 1: Загрузка изображения
+          // Этап 1: Загрузка изображения на IPFS
           updateFile(file.id, { 
             status: 'uploading', 
-            progress: 25 
+            progress: 20 
           })
           
           setMintingProgress(prev => prev ? {
             ...prev,
-            current: `📤 Uploading ${nftName} to IPFS...`
+            current: `📤 Uploading image ${nftName} to IPFS...`
           } : null)
           
-          await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400))
+          // Загрузка изображения на IPFS через external API (ИСПРАВЛЕНО)
+          let imageUri = '';
+          let imageGatewayUrl = '';
+          let imageCid = '';
+          try {
+            const formData = new FormData()
+            formData.append('image', file.file)  // ✅ ИСПРАВЛЕНО: правильное поле для /api/upload/image
+            formData.append('name', nftName)     // ✅ ИСПРАВЛЕНО: добавляем имя файла
+            
+            const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_EXTERNAL_API_URL}/api/upload/image`, {
+              method: 'POST',
+              headers: {
+                'x-api-key': process.env.NEXT_PUBLIC_EXTERNAL_API_KEY || ''
+              },
+              body: formData
+            })
+            
+            const uploadResult = await uploadResponse.json()
+            
+            if (uploadResult.success && uploadResult.data) {
+              imageUri = uploadResult.data.gatewayUrl || uploadResult.data.ipfsUri  // 🔥 КРИТИЧЕСКОЕ: используем Gateway URL для Phantom!
+              imageGatewayUrl = uploadResult.data.gatewayUrl    // ✅ Gateway URL для браузера
+              imageCid = uploadResult.data.ipfsHash             // ✅ IPFS hash
+              console.log('[NFTUpload] ✅ Изображение загружено на IPFS:', {
+                hash: imageCid,
+                ipfsUri: uploadResult.data.ipfsUri,  // ✅ Показываем оригинальный ipfs://
+                gatewayUrl: imageGatewayUrl,         // ✅ Gateway URL для браузера
+                usedUri: imageUri,                   // 🔥 КРИТИЧЕСКОЕ: что мы используем в JSON
+                uriType: imageUri.startsWith('https://') ? 'HTTPS Gateway' : 'IPFS Protocol',
+                size: uploadResult.data.size
+              })
+            } else {
+              throw new Error(uploadResult.error || 'Ошибка загрузки изображения')
+            }
+            
+          } catch (uploadError: any) {
+            console.error('[NFTUpload] ❌ Ошибка загрузки изображения на IPFS:', uploadError)
+            updateFile(file.id, { 
+              status: 'error', 
+              error: `Ошибка загрузки изображения: ${uploadError.message}`,
+              progress: 0 
+            })
+            continue
+          }
+
+          if (controller.signal.aborted) break
+
+          // Этап 2: Создание и загрузка JSON метаданных на IPFS
+          updateFile(file.id, { 
+            status: 'uploading', 
+            progress: 50 
+          })
+          
+          setMintingProgress(prev => prev ? {
+            ...prev,
+            current: `📝 Creating metadata for ${nftName}...`
+          } : null)
+
+          // Получаем данные выбранной коллекции для корректных метаданных
+          const selectedCollectionData = availableCollections.find(c => c.id === selectedCollection)
+          
+          // 🔥 PHANTOM WALLET ТРЕБУЕТ СПЕЦИФИЧЕСКИЙ ФОРМАТ НАЗВАНИЙ!
+          const collectionName = selectedCollectionData?.name || 'PE Stickers'
+          const formattedNftName = `${collectionName} #${nftName}`  // 🎯 PHANTOM СТАНДАРТ!
+          
+          let metadataUri = '';
+          try {
+            // ✅ КРИТИЧЕСКАЯ ВАЛИДАЦИЯ: Проверяем что imageUri заполнен!
+            if (!imageUri || imageUri.trim() === '') {
+              throw new Error('КРИТИЧЕСКАЯ ОШИБКА: imageUri пустой! Проверьте загрузку изображения.')
+            }
+            
+            // ✅ КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем валидированную утилиту создания метаданных
+            
+            const nftMetadata = createValidNFTMetadata({
+              name: formattedNftName,  // 🔥 ИСПРАВЛЕНО: используем Phantom-совместимый формат
+              symbol: selectedCollectionData?.symbol || "cNFT",
+              description: selectedCollectionData?.description || `NFT from ${selectedCollectionData?.name || 'PEcamp'} collection: ${nftName}`,
+              imageUri: imageUri,
+              imageType: file.file.type || "image/png",
+              attributes: [], // Можно добавить атрибуты если нужно
+              externalUrl: selectedCollectionData?.external_url
+            })
+            
+            // ✅ ПОЛНАЯ ВАЛИДАЦИЯ JSON МЕТАДАННЫХ
+            const validation = validateNFTMetadata(nftMetadata)
+            logValidationResults(validation, nftName)
+            
+            if (!validation.isValid) {
+              console.error('[NFTUpload] ❌ ОШИБКИ ВАЛИДАЦИИ МЕТАДАННЫХ:', validation.errors)
+              throw new Error(`Ошибки в структуре метаданных: ${validation.errors.join(', ')}`)
+            }
+            
+            console.log('[NFTUpload] ✅ МЕТАДАННЫЕ ВАЛИДНЫ:', {
+              name: nftMetadata.name,
+              symbol: nftMetadata.symbol,
+              sellerFeeBasisPoints: nftMetadata.seller_fee_basis_points,
+              imageUri: nftMetadata.image,
+              filesUri: nftMetadata.properties.files[0]?.uri,
+              uriMatch: nftMetadata.image === nftMetadata.properties.files[0]?.uri,
+              collection: selectedCollectionData?.name
+            })
+
+            // Загружаем JSON метаданные на IPFS
+            const metadataResponse = await fetch(`${process.env.NEXT_PUBLIC_EXTERNAL_API_URL}/api/upload/metadata`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.NEXT_PUBLIC_EXTERNAL_API_KEY || ''
+              },
+              body: JSON.stringify({
+                metadata: nftMetadata,
+                filename: `${nftName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-metadata.json`
+              })
+            })
+
+            const metadataResult = await metadataResponse.json()
+
+            if (metadataResult.success) {
+              metadataUri = metadataResult.data.gatewayUrl || metadataResult.data.ipfsUri
+              console.log('[NFTUpload] ✅ Метаданные загружены на IPFS:', {
+                hash: metadataResult.data.ipfsHash,
+                uri: metadataUri,
+                metadata: nftMetadata
+              })
+            } else {
+              throw new Error(metadataResult.error || 'Ошибка загрузки метаданных')
+            }
+
+          } catch (metadataError: any) {
+            console.error('[NFTUpload] ❌ Ошибка загрузки метаданных на IPFS:', metadataError)
+            updateFile(file.id, { 
+              status: 'error', 
+              error: `Ошибка загрузки метаданных: ${metadataError.message}`,
+              progress: 0 
+            })
+            continue
+          }
           
           if (controller.signal.aborted) break
 
-          // Этап 2: Минтинг
+          // Этап 3: Реальный минтинг через гибридный API
           updateFile(file.id, { 
             status: 'minting', 
             progress: 75 
@@ -233,33 +409,88 @@ export default function NFTUploadPage() {
             current: `⚡ Minting ${nftName} to blockchain...`
           } : null)
           
-          await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 800))
-          
-          if (controller.signal.aborted) break
+          try {
+            console.log('[NFTUpload] Вызываем mintSingle для:', formattedNftName)  // 🔥 ОБНОВЛЕНО
+            console.log('[NFTUpload] Данные для минтинга:', {
+              collectionId: selectedCollection,
+              recipient: file.recipient,
+              metadata: {
+                name: formattedNftName,  // 🔥 ИСПРАВЛЕНО: используем Phantom-совместимое название
+                uri: metadataUri, // ← ИСПРАВЛЕНО: используем URI метаданных, а не изображения
+                symbol: selectedCollectionData?.symbol || "cNFT",  // ✅ ИСПРАВЛЕНО: динамический символ
+                description: `NFT from ${selectedCollectionData?.name || 'PEcamp'} collection: ${nftName}`  // ✅ ИСПРАВЛЕНО: динамическое имя
+              }
+            })
+            
+            // Маппинг между Supabase коллекциями и бэкенд коллекциями
+            const collectionMapping = {
+              '54333c2d-dd85-423d-bddd-aa0b1d903a08': 'pe-stickers', // PE Stickers
+              // Добавим другие коллекции при необходимости
+            }
+            
+            const backendCollectionId = collectionMapping[selectedCollection as keyof typeof collectionMapping] || 'pe-stickers'
+            
+            console.log('[NFTUpload] Маппинг коллекции:', selectedCollection, '→', backendCollectionId)
+            
+            const mintResult = await mintSingle({
+              collectionId: backendCollectionId,
+              recipient: file.recipient,
+              metadata: {
+                name: formattedNftName,  // 🔥 ИСПРАВЛЕНО: используем Phantom-совместимое название
+                uri: metadataUri,  // ✅ URI на JSON метаданные
+                symbol: selectedCollectionData?.symbol || "cNFT",  // ✅ ИСПРАВЛЕНО: динамический символ
+                description: `NFT from ${selectedCollectionData?.name || 'PEcamp'} collection: ${nftName}`,
+                // ✅ КРИТИЧЕСКОЕ: Передаем creators для правильного минтинга
+                creators: [
+                  {
+                    address: selectedCollectionData?.creator_address || process.env.NEXT_PUBLIC_DEFAULT_CREATOR_ADDRESS || "A27VztuDLCA3FwnELbCnoGQW83Rk5xfrL7A79A8xbDTP",
+                    share: 100,
+                    verified: true
+                  }
+                ]
+              }
+            })
 
-          // Симуляция случайных ошибок (5% вероятность)
-          const hasError = Math.random() < 0.05
-          
-          if (hasError) {
+            if (mintResult.success) {
+              console.log('[NFTUpload] NFT успешно заминтен:', mintResult.operationId)
+              
+              updateFile(file.id, { 
+                status: 'uploaded', 
+                progress: 100,
+                transactionHash: mintResult.operationId || 'unknown'
+              })
+              
+              setMintingProgress(prev => prev ? {
+                ...prev,
+                completed: prev.completed + 1
+              } : null)
+            } else {
+              console.error('[NFTUpload] Ошибка минтинга:', mintResult.error)
+              
+              updateFile(file.id, { 
+                status: 'error', 
+                error: mintResult.error || `Failed to mint ${nftName}`,
+                progress: 0 
+              })
+              
+              setMintingProgress(prev => prev ? {
+                ...prev,
+                failed: prev.failed + 1
+              } : null)
+            }
+            
+          } catch (error: any) {
+            console.error('[NFTUpload] Критическая ошибка минтинга:', error)
+            
             updateFile(file.id, { 
               status: 'error', 
-              error: `Failed to mint ${nftName}: Tree capacity exceeded`,
+              error: error.message || `Failed to mint ${nftName}`,
               progress: 0 
             })
             
             setMintingProgress(prev => prev ? {
               ...prev,
               failed: prev.failed + 1
-            } : null)
-          } else {
-            updateFile(file.id, { 
-              status: 'uploaded', 
-              progress: 100 
-            })
-            
-            setMintingProgress(prev => prev ? {
-              ...prev,
-              completed: prev.completed + 1
             } : null)
           }
           
@@ -295,7 +526,8 @@ export default function NFTUploadPage() {
       }
       
     } catch (error) {
-      console.error('Minting error:', error)
+      console.error('[NFTUpload] Глобальная ошибка минтинга:', error)
+      alert(`Ошибка минтинга: ${error}`)
     } finally {
       setIsMinting(false)
       setAbortController(null)
@@ -617,23 +849,22 @@ export default function NFTUploadPage() {
                     }
                   </p>
                   <input
-                    ref={fileInputRef}
+                    id="file-upload"
                     type="file"
                     multiple
                     accept="image/*"
                     onChange={(e) => e.target.files && handleFiles(e.target.files)}
                     className="hidden"
                   />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    className="cursor-pointer"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isMinting}
+                  <label
+                    htmlFor="file-upload"
+                    className={
+                      `inline-flex items-center px-4 py-2 border rounded-md text-sm font-medium
+                      cursor-pointer hover:bg-gray-50 ${isMinting ? 'opacity-60 cursor-not-allowed' : ''}`}
                   >
                     <FileImage className="h-4 w-4 mr-2" />
                     {uploadedFiles.length === 0 ? 'Choose Files' : 'Add More Files'}
-                  </Button>
+                  </label>
                   <p className="text-xs text-gray-500 mt-2">
                     Supports: JPG, PNG, GIF, WebP (max 10MB each)
                   </p>

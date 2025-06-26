@@ -5,7 +5,7 @@ import { useSolBalance } from '@/hooks/use-sol-balance'
 import { cn } from '@/lib/utils'
 
 export function SolanaBalanceDisplay() {
-  const { balance, isLoading, error, lastUpdated, refetch } = useSolBalance()
+  const { balance, isLoading, error, refetch } = useSolBalance()
 
   const getBalanceColor = (balance: number | null) => {
     if (balance === null) return 'bg-gray-100 text-gray-800'
@@ -21,10 +21,21 @@ export function SolanaBalanceDisplay() {
 
   if (error) {
     return (
-      <Badge variant="secondary" className="px-4 py-2 text-sm bg-red-100 text-red-800 border-red-200">
-        <AlertTriangle className="h-4 w-4 mr-2" />
-        Balance load error
-      </Badge>
+      <div className="flex items-center gap-2">
+        <Badge variant="secondary" className="px-4 py-2 text-sm bg-red-100 text-red-800 border-red-200">
+          <AlertTriangle className="h-4 w-4 mr-2" />
+          Balance load error
+        </Badge>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={refetch}
+          className="h-8 w-8 p-0"
+          title="Retry loading balance"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      </div>
     )
   }
 
@@ -33,9 +44,10 @@ export function SolanaBalanceDisplay() {
       <Badge 
         variant="secondary" 
         className={cn(
-          "px-4 py-2 text-sm font-medium border",
+          "px-4 py-2 text-sm font-medium border cursor-help",
           getBalanceColor(balance)
         )}
+        title={`Minting wallet: ${process.env.NEXT_PUBLIC_MINTING_WALLET || '5JbDcHSKkPnptsGKS7oZjir2FuALJURf5p9fqAPt4Z6t'}`}
       >
         <Wallet className="h-4 w-4 mr-2" />
         {isLoading ? (
@@ -61,13 +73,7 @@ export function SolanaBalanceDisplay() {
         >
           <RefreshCw className="h-4 w-4" />
         </Button>
-      )}
-      
-      {lastUpdated && (
-        <span className="text-xs text-gray-500">
-          Updated: {lastUpdated.toLocaleTimeString()}
-        </span>
-      )}
-    </div>
+              )}
+      </div>
   )
 } 

@@ -5,42 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SolanaBalanceDisplay } from '@/components/solana-balance-display'
+import { useMintHistory } from '@/hooks/use-mint-history'
 
-import { Upload, History, Settings, Zap, Database, CheckCircle, RefreshCw, AlertCircle } from 'lucide-react'
-
-// Последние добавления из истории минтинга - 3 самых свежих
-const recentMintings = [
-  {
-    id: 'mint_001',
-    timestamp: '2024-01-23 14:30:25',
-    collection: 'PEcamp Founders cNFT',
-    nftName: 'Founder Badge cNFT #47',
-    recipient: '8K7R9mF2x3G4y1W5s6Q7t8P9u0V1w2X3y4Z5a6B7c8D9e0F1',
-    status: 'completed',
-    leafIndex: 47,
-    timePassed: '2 minutes ago'
-  },
-  {
-    id: 'mint_002',
-    timestamp: '2024-01-23 14:29:18',
-    collection: 'Team Avatars v2',
-    nftName: 'Team Member cNFT #12',
-    recipient: '9M3S1a2G7h8J4k5L6z7X8c9V0b1N2m3Q4w5E6r7T8y9U0i1O2p3',
-    status: 'completed',
-    leafIndex: 12,
-    timePassed: '3 minutes ago'
-  },
-  {
-    id: 'mint_003',
-    timestamp: '2024-01-23 14:28:42',
-    collection: 'Achievement Badges v2',
-    nftName: 'Completion cNFT #156',
-    recipient: '7L6K5j4H3g2F1d0S9a8P7o6I5u4Y3t2R1e0W9q8E7r6T5y4U3i2O1',
-    status: 'processing',
-    leafIndex: 156,
-    timePassed: '4 minutes ago'
-  }
-]
+import { Upload, History, Settings, Zap, Database, CheckCircle, RefreshCw, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react'
 
 function getStatusIcon(status: string) {
   switch (status) {
@@ -61,11 +28,32 @@ function truncateAddress(address: string) {
 }
 
 export default function NFTMintingPage() {
+  // Загружаем реальные данные истории минтинга (авто-обновление встроено в хук)
+  const { operations, statistics, loading, error, refresh, getRecentOperations } = useMintHistory({ 
+    limit: 3
+  })
+  
+  // Получаем последние 3 операции
+  const recentMintings = getRecentOperations(3)
+  
+  // Вычисляем статистику из реальных данных
+  const lastCompletedTime = recentMintings.find(op => op.status === 'completed')?.timePassed || 'Нет данных'
+  const processingCount = operations.filter(op => op.status === 'processing').length
+  const successRate = statistics?.successRate || 0
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <Link href="/admin">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Admin Dashboard
+              </Button>
+            </Link>
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">
@@ -75,7 +63,9 @@ export default function NFTMintingPage() {
                 Manage and mint compressed NFT collections for PEcamp ecosystem
               </p>
             </div>
-            <SolanaBalanceDisplay />
+            <div className="flex items-center gap-3">
+              <SolanaBalanceDisplay />
+            </div>
           </div>
         </div>
 
@@ -113,24 +103,30 @@ export default function NFTMintingPage() {
                 Recent Activity
               </CardTitle>
               <CardDescription className="text-blue-100">
-                Latest minting operations from all collections
+                Real-time statistics from minting operations
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-blue-100">Last completed:</span>
-                  <span className="font-semibold">2 minutes ago</span>
+              {loading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-white" />
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-blue-100">Processing now:</span>
-                  <span className="font-semibold">1 NFT</span>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-blue-100">Last completed:</span>
+                    <span className="font-semibold">{lastCompletedTime}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-blue-100">Processing now:</span>
+                    <span className="font-semibold">{processingCount} NFT{processingCount !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-blue-100">Success rate:</span>
+                    <span className="font-semibold">{successRate}%</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-blue-100">Success rate:</span>
-                  <span className="font-semibold">95.2%</span>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -145,7 +141,10 @@ export default function NFTMintingPage() {
                   Latest Minting Activity
                 </CardTitle>
                 <CardDescription>
-                  Three most recent NFT additions to collections
+                  Real-time data from recent minting operations
+                  <span className="block text-xs text-gray-400 mt-1">
+                    ↻ Auto-refreshes every 30s when operations are active
+                  </span>
                 </CardDescription>
               </div>
               <Link href="/admin/nft-minting/history">
@@ -156,36 +155,68 @@ export default function NFTMintingPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentMintings.map((mint) => (
-                <div key={mint.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                      {getStatusIcon(mint.status)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium truncate">{mint.nftName}</h3>
-                        <Badge variant="secondary" className="text-xs">
-                          #{mint.leafIndex}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 truncate">Collection: {mint.collection}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 flex-shrink-0">
-                    <div className="text-right">
-                      <div className="text-sm text-gray-600">
-                        {truncateAddress(mint.recipient)}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {mint.timePassed}
-                      </div>
-                    </div>
-                  </div>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+                <span className="ml-2 text-gray-500">Загружаем историю...</span>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center py-8 text-red-600">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                <span>{error}</span>
+              </div>
+            ) : recentMintings.length === 0 ? (
+              <div className="flex items-center justify-center py-8 text-gray-500">
+                <Database className="h-8 w-8 mr-3 text-gray-400" />
+                <div className="text-center">
+                  <p className="font-medium">Нет данных минтинга</p>
+                  <p className="text-sm">Операции минтинга появятся здесь после их выполнения</p>
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {recentMintings.map((operation) => (
+                  <div key={operation.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        {getStatusIcon(operation.status)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-medium truncate">
+                            {operation.type === 'batch' 
+                              ? `Batch: ${operation.totalItems} NFTs` 
+                              : operation.nftName || 'Single NFT'
+                            }
+                          </h3>
+                          {operation.leafIndex && (
+                            <Badge variant="secondary" className="text-xs">
+                              #{operation.leafIndex}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {operation.type}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 truncate">Collection: {operation.collection}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                      <div className="text-right">
+                        {operation.recipient && (
+                          <div className="text-sm text-gray-600">
+                            {truncateAddress(operation.recipient)}
+                          </div>
+                        )}
+                        <div className="text-xs text-gray-500">
+                          {operation.timePassed}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

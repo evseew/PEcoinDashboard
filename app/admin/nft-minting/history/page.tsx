@@ -1,9 +1,13 @@
-import { Metadata } from 'next'
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useMintHistory } from '@/hooks/use-mint-history'
 import { 
   ArrowLeft, 
   Search, 
@@ -18,111 +22,10 @@ import {
   Wallet,
   Image as ImageIcon,
   Database,
-  TreePine
+  TreePine,
+  Loader2,
+  X
 } from 'lucide-react'
-
-export const metadata: Metadata = {
-  title: 'Compressed NFT Minting History - PEcamp Admin',
-  description: 'View compressed NFT minting transaction history and logs'
-}
-
-// Sample history data - updated for compressed NFT
-const mintingHistory = [
-  {
-    id: 'mint_001',
-    timestamp: '2024-01-23 14:30:25',
-    collection: 'PEcamp Founders cNFT',
-    nftName: 'Founder Badge cNFT #47',
-    recipient: '8K7R9mF2x3G4y1W5s6Q7t8P9u0V1w2X3y4Z5a6B7c8D9e0F1',
-    status: 'completed',
-    transactionHash: '5N8T2b3H8g9M3s1A7q4R5e6W7t8Y9u0I1o2P3a4S5d6F7g8H9j0K1',
-    treeAddress: '7xKXqR9mF2x3G4y1W5s6Q7t8P9u0V1w2X',
-    leafIndex: 47,
-    cost: 0.00025, // Much cheaper for compressed NFTs
-    confirmations: 432
-  },
-  {
-    id: 'mint_002',
-    timestamp: '2024-01-23 14:29:18',
-    collection: 'Team Avatars v2',
-    nftName: 'Team Member cNFT #12',
-    recipient: '9M3S1a2G7h8J4k5L6z7X8c9V0b1N2m3Q4w5E6r7T8y9U0i1O2p3',
-    status: 'completed',
-    transactionHash: '6O9P3c4I9h0N4t6B8q5R6e7W8t9Y0u1I2o3P4a5S6d7F8g9H0j1L2',
-    treeAddress: '5N8T2b3H8g9M3s1A7q4R5e6W7t8Y9u0I',
-    leafIndex: 12,
-    cost: 0.00025,
-    confirmations: 428
-  },
-  {
-    id: 'mint_003',
-    timestamp: '2024-01-23 14:28:42',
-    collection: 'Achievement Badges v2',
-    nftName: 'Completion cNFT #156',
-    recipient: '7L6K5j4H3g2F1d0S9a8P7o6I5u4Y3t2R1e0W9q8E7r6T5y4U3i2O1',
-    status: 'processing',
-    transactionHash: '7P0Q4d5J0i1O5u7C9r6S7f8G9h0J1k2L3m4N5b6V7c8X9z0A1s2D3',
-    treeAddress: '9M3S1a2G7h8J4k5L6z7X8c9V0b1N2m3Q',
-    leafIndex: 156,
-    cost: 0.00025,
-    confirmations: 12
-  },
-  {
-    id: 'mint_004',
-    timestamp: '2024-01-23 14:27:33',
-    collection: 'Seasonal Collection Winter',
-    nftName: 'Winter Special cNFT #89',
-    recipient: '4G3F2d1S0a9P8o7I6u5Y4t3R2e1W0q9E8r7T6y5U4i3O2p1A0s9D8',
-    status: 'failed',
-    transactionHash: null,
-    treeAddress: '4G3F2d1S0a9P8o7I6u5Y4t3R2e1W0q9E',
-    leafIndex: null,
-    cost: 0.00025,
-    confirmations: 0,
-    error: 'Tree capacity exceeded'
-  },
-  {
-    id: 'mint_005',
-    timestamp: '2024-01-23 14:26:15',
-    collection: 'PEcamp Founders cNFT',
-    nftName: 'Founder Badge cNFT #46',
-    recipient: '2E1W0q9R8t7Y6u5I4o3P2a1S0d9F8g7H6j5K4l3M2n1B0v9C8x7Z6',
-    status: 'completed',
-    transactionHash: '8Q1R5e6K1l2M6o8D0s5F6g7H8j9K0l1M2n3B4v5C6x7Z8a9S0d1F2',
-    treeAddress: '7xKXqR9mF2x3G4y1W5s6Q7t8P9u0V1w2X',
-    leafIndex: 46,
-    cost: 0.00025,
-    confirmations: 456
-  },
-  {
-    id: 'mint_006',
-    timestamp: '2024-01-23 14:25:30',
-    collection: 'Team Avatars v2',
-    nftName: 'Team Member cNFT #11',
-    recipient: '3F2X1z0A9s8D7f6G5h4J3k2L1m0N9b8V7c6X5z4A3s2D1f0G9h8J7',
-    status: 'failed',
-    transactionHash: null,
-    treeAddress: '5N8T2b3H8g9M3s1A7q4R5e6W7t8Y9u0I',
-    leafIndex: null,
-    cost: 0.00025,
-    confirmations: 0,
-    error: 'Insufficient SOL balance'
-  },
-  {
-    id: 'mint_007',
-    timestamp: '2024-01-23 14:24:12',
-    collection: 'Achievement Badges v2',
-    nftName: 'Achievement cNFT #155',
-    recipient: '5I4O3p2A1s0D9f8G7h6J5k4L3m2N1b0V9c8X7z6A5s4D3f2G1h0J9',
-    status: 'failed',
-    transactionHash: null,
-    treeAddress: '9M3S1a2G7h8J4k5L6z7X8c9V0b1N2m3Q',
-    leafIndex: null,
-    cost: 0.00025,
-    confirmations: 0,
-    error: 'RPC timeout - network congestion'
-  }
-]
 
 function getStatusColor(status: string) {
   switch (status) {
@@ -156,20 +59,70 @@ function truncateAddress(address: string) {
 }
 
 export default function HistoryPage() {
-  const totalOperations = mintingHistory.length
-  const completedOperations = mintingHistory.filter(op => op.status === 'completed').length
-  const failedOperations = mintingHistory.filter(op => op.status === 'failed').length
-  const processingOperations = mintingHistory.filter(op => op.status === 'processing').length
-  const totalCost = mintingHistory.reduce((sum, op) => sum + op.cost, 0)
-  const successRate = totalOperations > 0 ? (completedOperations / totalOperations * 100) : 0
-  const avgCostPerMint = completedOperations > 0 ? (totalCost / totalOperations) : 0
+  // Состояния для фильтрации
+  const [statusFilter, setStatusFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
 
-  // Get today's operations for daily stats
-  const today = new Date().toISOString().split('T')[0]
-  const todayOperations = mintingHistory.filter(op => op.timestamp.startsWith(today))
-  const todayCompleted = todayOperations.filter(op => op.status === 'completed').length
-  const todayFailed = todayOperations.filter(op => op.status === 'failed').length
-  const todayTotal = todayOperations.length
+  // Загружаем реальные данные истории минтинга
+  const { 
+    operations, 
+    statistics, 
+    loading, 
+    error, 
+    refresh, 
+    updateFilters, 
+    clearFilters
+  } = useMintHistory({ 
+    limit: 100,
+    ...(statusFilter && { status: statusFilter }),
+    ...(typeFilter && { type: typeFilter })
+  })
+
+  // Фильтрация по поисковому запросу
+  const filteredOperations = operations.filter(op => {
+    if (!searchTerm) return true
+    
+    const search = searchTerm.toLowerCase()
+    return (
+      op.collection.toLowerCase().includes(search) ||
+      op.operationId.toLowerCase().includes(search) ||
+      (op.nftName && op.nftName.toLowerCase().includes(search)) ||
+      (op.recipient && op.recipient.toLowerCase().includes(search))
+    )
+  })
+
+  // Статистика из реальных данных
+  const totalOperations = statistics?.total || 0
+  const completedOperations = statistics?.completed || 0
+  const failedOperations = statistics?.failed || 0
+  const processingOperations = statistics?.processing || 0
+  const totalCost = statistics?.totalCost || 0
+  const successRate = statistics?.successRate || 0
+  const avgCostPerMint = statistics?.avgCostPerMint || 0
+
+  // Статистика за сегодня
+  const todayCompleted = statistics?.today?.completed || 0
+  const todayFailed = statistics?.today?.failed || 0
+  const todayTotal = statistics?.today?.total || 0
+
+  // Обработчики фильтров
+  const handleStatusFilter = (value: string) => {
+    setStatusFilter(value === 'all' ? '' : value)
+    updateFilters({ status: value === 'all' ? undefined : value })
+  }
+
+  const handleTypeFilter = (value: string) => {
+    setTypeFilter(value === 'all' ? '' : value)
+    updateFilters({ type: value === 'all' ? undefined : value })
+  }
+
+  const handleClearFilters = () => {
+    setStatusFilter('')
+    setTypeFilter('')
+    setSearchTerm('')
+    clearFilters()
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 p-6">
@@ -190,170 +143,265 @@ export default function HistoryPage() {
                 📜 Compressed NFT History
               </h1>
               <p className="text-lg text-gray-600">
-                Track all compressed NFT minting operations and transactions
+                Real-time tracking of all compressed NFT minting operations
               </p>
             </div>
-            <Button variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refresh}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Обновить
+              </Button>
+              <Button variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </Button>
+            </div>
           </div>
         </div>
 
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-white/80 backdrop-blur border-0 shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Operations</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalOperations}</p>
+                </div>
+                <Database className="h-8 w-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
 
+          <Card className="bg-white/80 backdrop-blur border-0 shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Success Rate</p>
+                  <p className="text-2xl font-bold text-green-600">{successRate}%</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
 
+          <Card className="bg-white/80 backdrop-blur border-0 shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Today's Operations</p>
+                  <p className="text-2xl font-bold text-blue-600">{todayTotal}</p>
+                  <p className="text-xs text-gray-500">
+                    ✅ {todayCompleted} ❌ {todayFailed}
+                  </p>
+                </div>
+                <Calendar className="h-8 w-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
 
+          <Card className="bg-white/80 backdrop-blur border-0 shadow-md">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Cost</p>
+                  <p className="text-2xl font-bold text-purple-600">{totalCost.toFixed(5)} SOL</p>
+                  <p className="text-xs text-gray-500">Avg: {avgCostPerMint.toFixed(5)} SOL</p>
+                </div>
+                <Wallet className="h-8 w-8 text-purple-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Filters */}
         <Card className="bg-white/80 backdrop-blur border-0 shadow-md mb-8">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search by NFT name or transaction..."
-                  className="pl-10"
-                />
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filters & Search
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Search</label>
+                <div className="relative">
+                  <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
+                  <Input
+                    placeholder="Search operations..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">All Status</Button>
-                <Button variant="outline" size="sm">Completed</Button>
-                <Button variant="outline" size="sm">Processing</Button>
-                <Button variant="outline" size="sm">Failed</Button>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Status</label>
+                <Select value={statusFilter || 'all'} onValueChange={handleStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="processing">Processing</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filters
-              </Button>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Type</label>
+                <Select value={typeFilter || 'all'} onValueChange={handleTypeFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="single">Single NFT</SelectItem>
+                    <SelectItem value="batch">Batch</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-end">
+                <Button
+                  variant="outline"
+                  onClick={handleClearFilters}
+                  className="w-full"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Clear Filters
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Transaction History */}
+        {/* Operations List */}
         <Card className="bg-white/80 backdrop-blur border-0 shadow-md">
           <CardHeader>
-            <CardTitle>Transaction History</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5" />
+              Operations History
+            </CardTitle>
             <CardDescription>
-              Detailed log of all compressed NFT minting operations
+              Showing {filteredOperations.length} of {totalOperations} operations
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {mintingHistory.map((transaction) => (
-                <div key={transaction.id} className="border border-gray-200 rounded-lg p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-4">
-                      <div className="p-2 bg-emerald-100 rounded-lg">
-                        <Database className="h-5 w-5 text-emerald-600" />
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-500 mr-3" />
+                <span className="text-gray-500">Загружаем историю операций...</span>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center py-12 text-red-600">
+                <AlertCircle className="h-8 w-8 mr-3" />
+                <div className="text-center">
+                  <p className="font-medium">Ошибка загрузки истории</p>
+                  <p className="text-sm">{error}</p>
+                </div>
+              </div>
+            ) : filteredOperations.length === 0 ? (
+              <div className="flex items-center justify-center py-12 text-gray-500">
+                <Database className="h-12 w-12 mr-4 text-gray-400" />
+                <div className="text-center">
+                  <p className="font-medium text-lg">Нет данных для отображения</p>
+                  <p className="text-sm">Попробуйте изменить фильтры или проверьте позже</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredOperations.map((operation) => (
+                  <div key={operation.id} className="border border-gray-200 rounded-lg p-6 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          {getStatusIcon(operation.status)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="font-semibold text-lg text-gray-900">
+                              {operation.type === 'batch' 
+                                ? `Batch: ${operation.totalItems} NFTs` 
+                                : operation.nftName || 'Single NFT'
+                              }
+                            </h3>
+                            <Badge className={getStatusColor(operation.status)}>
+                              {operation.status}
+                            </Badge>
+                            <Badge variant="outline">
+                              {operation.type}
+                            </Badge>
+                          </div>
+                          <p className="text-gray-600 mb-1">Collection: {operation.collection}</p>
+                          <p className="text-sm text-gray-500 font-mono">ID: {operation.operationId}</p>
+                        </div>
                       </div>
+                      <div className="text-right text-sm text-gray-500">
+                        <p>{operation.timePassed}</p>
+                        <p>{new Date(operation.timestamp).toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      {operation.recipient && (
+                        <div>
+                          <span className="text-gray-600">Recipient:</span>
+                          <p className="font-mono">{truncateAddress(operation.recipient)}</p>
+                        </div>
+                      )}
                       <div>
-                        <h3 className="font-semibold text-gray-900 mb-1">
-                          {transaction.nftName}
-                        </h3>
-                        <p className="text-sm text-gray-600 mb-2">
-                          Collection: {transaction.collection}
+                        <span className="text-gray-600">Cost:</span>
+                        <p className="font-semibold">{operation.cost.toFixed(5)} SOL</p>
+                      </div>
+                      {operation.confirmations > 0 && (
+                        <div>
+                          <span className="text-gray-600">Confirmations:</span>
+                          <p className="font-semibold">{operation.confirmations}</p>
+                        </div>
+                      )}
+                      {operation.type === 'batch' && (
+                        <div>
+                          <span className="text-gray-600">Progress:</span>
+                          <p className="font-semibold">
+                            {operation.successfulItems || 0}/{operation.totalItems || 0}
+                            {operation.failedItems && operation.failedItems > 0 && (
+                              <span className="text-red-600 ml-1">({operation.failedItems} failed)</span>
+                            )}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {operation.error && (
+                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-red-700 text-sm">
+                          <span className="font-medium">Error:</span> {operation.error}
                         </p>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span>{transaction.timestamp}</span>
-                          {transaction.leafIndex !== null && (
-                            <span>Leaf Index: #{transaction.leafIndex}</span>
-                          )}
-                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      {/* Compact Stats */}
-                      <div className="flex items-center gap-3 text-sm text-gray-600">
-                        <span className="font-semibold text-emerald-600">{successRate.toFixed(1)}%</span>
-                        <span>Sent: {totalOperations}</span>
-                        <span className="text-green-600">✓ {completedOperations}</span>
-                        <span className="text-red-600">✗ {failedOperations}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-3">
-                        <Badge className={`px-3 py-1 ${getStatusColor(transaction.status)}`}>
-                          {getStatusIcon(transaction.status)}
-                          <span className="ml-2">{transaction.status.toUpperCase()}</span>
-                        </Badge>
-                        <span className="text-sm font-mono text-gray-600">
-                          {transaction.cost} ◎
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                    )}
 
-                  {/* Tree Information */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-1">
-                        <TreePine className="h-4 w-4 text-gray-600" />
-                        <span className="text-xs font-medium text-gray-600">Merkle Tree</span>
-                      </div>
-                      <p className="text-sm font-mono text-gray-900">
-                        {truncateAddress(transaction.treeAddress)}
-                      </p>
-                    </div>
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Wallet className="h-4 w-4 text-gray-600" />
-                        <span className="text-xs font-medium text-gray-600">Recipient</span>
-                      </div>
-                      <p className="text-sm font-mono text-gray-900">
-                        {truncateAddress(transaction.recipient)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Transaction Details */}
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <div className="flex items-center gap-6 text-sm text-gray-600">
-                      {transaction.transactionHash && (
-                        <div className="flex items-center gap-2">
-                          <span>TX:</span>
-                          <Link 
-                            href={`https://explorer.solana.com/tx/${transaction.transactionHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 font-mono"
-                          >
-                            {truncateAddress(transaction.transactionHash)}
-                            <ExternalLink className="inline h-3 w-3 ml-1" />
-                          </Link>
-                        </div>
-                      )}
-                      {transaction.confirmations > 0 && (
-                        <div className="flex items-center gap-1">
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                          <span>{transaction.confirmations} confirmations</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {transaction.error && (
-                      <div className="flex items-center gap-2 text-red-600">
-                        <AlertCircle className="h-4 w-4" />
-                        <span className="text-sm">{transaction.error}</span>
+                    {operation.transactionHash && (
+                      <div className="mt-4 flex items-center gap-2">
+                        <Button variant="outline" size="sm">
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          View on Solscan
+                        </Button>
                       </div>
                     )}
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Pagination */}
-            <div className="mt-8 flex items-center justify-between">
-              <p className="text-sm text-gray-600">
-                Showing 1-{mintingHistory.length} of {mintingHistory.length} transactions
-              </p>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled>
-                  Previous
-                </Button>
-                <Button variant="outline" size="sm" disabled>
-                  Next
-                </Button>
+                ))}
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -1,57 +1,50 @@
 import { useState, useEffect } from 'react'
 
-// Для демонстрации используем фиксированный адрес кошелька
-// В продакшене это должно браться из конфигурации или переменных окружения
-const MINTING_WALLET_ADDRESS = process.env.NEXT_PUBLIC_MINTING_WALLET || '7xKXrW9mF2H8L3nN5d6aPqM1J4zR8vT9G2B5k7N3sQwE'
+// Адрес кошелька для минтинга NFT из переменных окружения
+const MINTING_WALLET_ADDRESS = process.env.NEXT_PUBLIC_MINTING_WALLET || '5JbDcHSKkPnptsGKS7oZjir2FuALJURf5p9fqAPt4Z6t'
 
 interface SolBalanceState {
   balance: number | null
   isLoading: boolean
   error: string | null
-  lastUpdated: Date | null
 }
 
 export function useSolBalance() {
   const [state, setState] = useState<SolBalanceState>({
     balance: null,
     isLoading: true,
-    error: null,
-    lastUpdated: null
+    error: null
   })
 
   const fetchBalance = async () => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }))
 
-      // Используем публичный RPC endpoint Solana для получения баланса
-      const response = await fetch('https://api.mainnet-beta.solana.com', {
-        method: 'POST',
+      const response = await fetch('/api/solana-balance', {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'getBalance',
-          params: [MINTING_WALLET_ADDRESS]
-        })
+        }
       })
 
-      const data = await response.json()
-      
-      if (data.error) {
-        throw new Error(data.error.message)
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`)
       }
 
-      // Конвертируем лампоры в SOL (1 SOL = 1e9 lamports)
-      const balanceInSol = data.result.value / 1e9
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.error || 'API request failed')
+      }
+
+      const balanceInSol = data.data.balance
 
       setState({
         balance: balanceInSol,
         isLoading: false,
-        error: null,
-        lastUpdated: new Date()
+        error: null
       })
+
     } catch (error) {
       setState(prev => ({
         ...prev,
@@ -63,11 +56,7 @@ export function useSolBalance() {
 
   useEffect(() => {
     fetchBalance()
-
-    // Обновляем баланс каждые 30 секунд
-    const interval = setInterval(fetchBalance, 30000)
-
-    return () => clearInterval(interval)
+    // Обновляется только при загрузке страницы или по кнопке
   }, [])
 
   return {
