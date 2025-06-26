@@ -1,5 +1,5 @@
 import { Edit, Trash2 } from "lucide-react"
-import { useSplTokenBalance } from "@/hooks/use-spl-token-balance"
+// import { useSplTokenBalance } from "@/hooks/use-spl-token-balance" // УДАЛЕНО: используем централизованную загрузку
 import { useNftCount } from "@/hooks/use-nft-count"
 import { useEffect, useState } from "react"
 import { signedUrlCache } from "@/lib/signed-url-cache"
@@ -10,6 +10,7 @@ interface EntityTableRowProps {
     name: string
     walletAddress: string
     logo?: string | null
+    balance?: number // Баланс теперь приходит как пропс
     [key: string]: any
   }
   pecoinMint: string
@@ -17,6 +18,7 @@ interface EntityTableRowProps {
   alchemyApiKey: string
   extraColumns: { key: string; label: string }[]
   showBalance?: boolean
+  balanceLoading?: boolean // Статус загрузки баланса
   handleEdit: (entity: any) => void
   handleDelete: (entity: any) => void
 }
@@ -28,10 +30,11 @@ export function EntityTableRow({
   alchemyApiKey, 
   extraColumns, 
   showBalance = true, 
+  balanceLoading = false,
   handleEdit, 
   handleDelete 
 }: EntityTableRowProps) {
-  const { balance, loading } = useSplTokenBalance(entity.walletAddress, pecoinMint, alchemyApiKey)
+  // const { balance, loading } = useSplTokenBalance(entity.walletAddress, pecoinMint, alchemyApiKey) // УДАЛЕНО
   const { nftCount, loading: nftLoading } = useNftCount(entity.walletAddress)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
@@ -74,7 +77,7 @@ export function EntityTableRow({
               <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
             </div>
             <span className="text-sm">
-              {loading ? "..." : balance !== null ? balance.toLocaleString() : "0"}
+              {balanceLoading ? "..." : entity.balance !== undefined ? entity.balance.toLocaleString() : "0"}
             </span>
           </div>
         </td>

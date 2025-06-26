@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Edit, Trash2, ArrowUpDown, Plus } from "lucide-react"
 import { motion } from "framer-motion"
 import { EntityFormModal } from "./entity-form-modal"
 import { DeleteConfirmationModal } from "./delete-confirmation-modal"
 import { useTokenImageUrl } from "@/hooks/token-image-provider"
-import { useSplTokenBalance } from "@/hooks/use-spl-token-balance"
+// import { useSplTokenBalance } from "@/hooks/use-spl-token-balance" // УДАЛЕНО: используем централизованную загрузку
 import { EntityTableRow } from "./entity-table-row"
 
 interface Entity {
@@ -45,16 +45,66 @@ export function EntityTable({
   isLoading = false,
   showBalance = false,
 }: EntityTableProps) {
-  const [sortField, setSortField] = useState<string>((entityType === "startup" || entityType === "team") ? "ageRangeMin" : "name")
+  const [sortField, setSortField] = useState<string>("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [selectedEntity, setSelectedEntity] = useState<Entity | null>(null)
+  
+  // Централизованная загрузка балансов
+  const [balances, setBalances] = useState<Record<string, number>>({})
+  const [balancesLoading, setBalancesLoading] = useState(false)
 
   const pecoinMint = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
   const pecoinImg = useTokenImageUrl(pecoinMint, "/images/pecoin.png")
   const alchemyApiKey = "VYK2v9vubZLxKwE9-ASUeQC6b1-zaVb1"
+
+  // Централизованная загрузка балансов для всех участников
+  useEffect(() => {
+    const fetchAllBalances = async () => {
+      if (!showBalance || entities.length === 0) return
+      
+      setBalancesLoading(true)
+      
+      try {
+        // Собираем все адреса кошельков
+        const wallets = entities
+          .filter(entity => entity.walletAddress)
+          .map(entity => entity.walletAddress)
+        
+        if (wallets.length === 0) {
+          setBalancesLoading(false)
+          return
+        }
+        
+        console.log(`[EntityTable] Загружаю балансы для ${wallets.length} кошельков`)
+        
+        // Один запрос для всех кошельков
+        const response = await fetch('/api/token-balances', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            wallets, 
+            mint: pecoinMint 
+          }),
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setBalances(data.balances || {})
+        } else {
+          console.error('[EntityTable] Ошибка загрузки балансов:', response.status)
+        }
+      } catch (error) {
+        console.error('[EntityTable] Критическая ошибка загрузки балансов:', error)
+      } finally {
+        setBalancesLoading(false)
+      }
+    }
+    
+    fetchAllBalances()
+  }, [entities, showBalance, pecoinMint])
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -205,12 +255,16 @@ export function EntityTable({
                 sortedEntities.map((entity) => (
                   <EntityTableRow
                     key={entity.id}
-                    entity={entity}
+                    entity={{
+                      ...entity,
+                      balance: balances[entity.walletAddress] || 0
+                    }}
                     pecoinMint={pecoinMint}
                     pecoinImg={pecoinImg}
                     alchemyApiKey={alchemyApiKey}
                     extraColumns={extraColumns}
                     showBalance={showBalance}
+                    balanceLoading={balancesLoading}
                     handleEdit={handleEdit}
                     handleDelete={handleDelete}
                   />

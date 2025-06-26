@@ -16,7 +16,7 @@ export function useSplTokenBalance(owner: string, mint: string, apiKey?: string)
       clearTimeout(timeoutRef.current)
     }
     
-    // Debounce запросы на 500ms для уменьшения нагрузки
+    // Debounce запросы на 200ms для уменьшения нагрузки (было 500ms)
     timeoutRef.current = setTimeout(() => {
       setLoading(true)
       setError(null)
@@ -47,7 +47,7 @@ export function useSplTokenBalance(owner: string, mint: string, apiKey?: string)
         .finally(() => {
           setLoading(false)
         })
-    }, 500)
+    }, 200)
 
     return () => {
       if (timeoutRef.current) {
