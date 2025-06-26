@@ -5,6 +5,15 @@ import { serverCache } from '@/lib/server-cache'
 import { walletNameResolver } from "@/lib/wallet-name-resolver"
 import { dynamicEcosystemCache } from "@/lib/dynamic-ecosystem-cache"
 
+// --- Проверка конфигурации ---
+if (!getAlchemyKey()) {
+  console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+  console.error("!!! FATAL: ALCHEMY_API_KEY is not configured.        !!!")
+  console.error("!!! The pecoin-history API endpoint will not work.   !!!")
+  console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+}
+// ---
+
 // --- Константы ---
 const PECOIN_MINT = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"; // PEcoin mint address
 const TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"; // Token-2022 Program ID

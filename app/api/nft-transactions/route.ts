@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Connection, PublicKey } from '@solana/web3.js'
 import { serverCache, ServerCache } from '@/lib/server-cache'
-import { getAlchemyUrl } from '@/lib/alchemy/solana'
+import { getAlchemyUrl, getAlchemyKey } from '@/lib/alchemy/solana'
+
+// --- Проверка конфигурации ---
+if (!getAlchemyKey()) {
+  console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+  console.error("!!! FATAL: ALCHEMY_API_KEY is not configured.        !!!")
+  console.error("!!! The nft-transactions API endpoint will not work. !!!")
+  console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+}
+// ---
 
 const ALCHEMY_URL = getAlchemyUrl()
 const connection = new Connection(ALCHEMY_URL, 'confirmed')

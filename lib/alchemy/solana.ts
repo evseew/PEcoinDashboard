@@ -19,6 +19,11 @@ export function getAlchemyKey() {
 
 export function getAlchemyUrl() {
   const key = getAlchemyKey()
+  if (!key) {
+    console.warn("[Alchemy] ALCHEMY_API_KEY не найден. Запросы к Alchemy RPC будут неудачными.")
+    // Возвращаем URL с плейсхолдером, чтобы избежать полного падения, но запросы не пройдут
+    return `https://solana-mainnet.g.alchemy.com/v2/demo`
+  }
   return `https://solana-mainnet.g.alchemy.com/v2/${key}`
 }
 
