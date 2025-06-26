@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
             ].filter(Boolean)
             
             if (allWallets.length > 0) {
-              const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+              const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '')
               const balanceResponse = await fetch(`${baseUrl}/api/token-balances`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

@@ -16,6 +16,11 @@ export function getBaseUrl(): string {
   }
 
   // As a fallback for local development, we use the NEXT_PUBLIC_APP_URL
-  // or default to localhost. This is still needed for local server-side execution.
-  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  // or default to localhost only in development mode.
+  if (process.env.NODE_ENV === 'development') {
+    return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  }
+  
+  // Production fallback - should not happen if vars are set correctly
+  throw new Error('Production base URL not configured. Set NEXT_PUBLIC_APP_URL or VERCEL_URL.')
 } 

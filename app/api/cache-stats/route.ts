@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
     // Получаем статистику кэша изображений
     let imageStats = null
     try {
-      const imageResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/nft-image`, {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '')
+    const imageResponse = await fetch(`${baseUrl}/api/nft-image`, {
         method: 'POST'
       })
       if (imageResponse.ok) {
