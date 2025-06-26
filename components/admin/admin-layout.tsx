@@ -33,7 +33,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { name: "Startups", href: "/admin/startups", icon: Rocket },
     { name: "Staff", href: "/admin/staff", icon: UserCog },
     { name: "NFT Minting", href: "/admin/nft-minting", icon: Palette },
-    { name: "Integration", href: "/admin/integration-test", icon: Settings },
   ]
 
   const isActive = (path: string) => {
