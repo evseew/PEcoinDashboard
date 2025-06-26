@@ -192,8 +192,6 @@ export function PublicDashboard() {
     }
   }
 
-
-
   const handleStartupSort = (sortBy: string) => {
     setStartupSort(sortBy)
     if (sortBy === "name") {
@@ -203,6 +201,13 @@ export function PublicDashboard() {
         const balanceA = balances[a.wallet_address] || 0
         const balanceB = balances[b.wallet_address] || 0
         return balanceB - balanceA
+      }))
+    } else if (sortBy === "age") {
+      setStartups([...startups].sort((a, b) => {
+        // Сортировка от младших к старшим
+        const ageA = a.age_range_min || 999 // Стартапы без возраста идут в конец
+        const ageB = b.age_range_min || 999
+        return ageA - ageB
       }))
     }
   }

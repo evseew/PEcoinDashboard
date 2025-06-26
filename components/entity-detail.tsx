@@ -422,8 +422,8 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
                         {entity.name}
                       </motion.h1>
                       
-                      {/* Age for teams - Right under the name */}
-                      {isTeam && (entity.ageDisplay || entity.ageRangeMin) && (
+                      {/* Age for teams and startups - Right under the name */}
+                      {(entity.ageDisplay || entity.ageRangeMin) && (
                         <motion.div
                           className="flex justify-center md:justify-start mt-2"
                           initial={{ opacity: 0, y: 20 }}

@@ -219,6 +219,9 @@ export function useAdminStartupMutations() {
         wallet_address: startupData.walletAddress,
         description: startupData.description,
         achievements: 0,
+        age_range_min: startupData.ageRangeMin,
+        age_range_max: startupData.ageRangeMax,
+        age_display: startupData.ageDisplay,
       }
       
       if (logoUrl) insertData.logo_url = logoUrl
@@ -262,6 +265,9 @@ export function useAdminStartupMutations() {
         name: startupData.name,
         wallet_address: startupData.walletAddress,
         description: startupData.description,
+        age_range_min: startupData.ageRangeMin,
+        age_range_max: startupData.ageRangeMax,
+        age_display: startupData.ageDisplay,
       }
       
       if (logoUrl) updateData.logo_url = logoUrl

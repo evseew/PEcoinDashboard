@@ -242,6 +242,9 @@ export function useAdminStartups() {
         description: startup.description,
         achievements: startup.achievements || 0,
         balance: 0,
+        age_range_min: startup.age_range_min,
+        age_range_max: startup.age_range_max,
+        age_display: startup.age_display,
       }))
       
       // Кэшируем данные

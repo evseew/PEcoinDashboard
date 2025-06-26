@@ -14,6 +14,9 @@ interface Startup {
   logo?: string | null
   description?: string
   achievements: number
+  age_range_min?: number
+  age_range_max?: number
+  age_display?: string
 }
 
 export default function StartupsPage() {
@@ -37,6 +40,9 @@ export default function StartupsPage() {
         description: startup.description,
         achievements: startup.achievements || 0,
         balance: 0,
+        age_range_min: startup.age_range_min,
+        age_range_max: startup.age_range_max,
+        age_display: startup.age_display,
       }))
     )
     setIsLoading(false)
@@ -62,6 +68,9 @@ export default function StartupsPage() {
         wallet_address: data.walletAddress,
         description: data.description,
         achievements: 0,
+        age_range_min: data.ageRangeMin,
+        age_range_max: data.ageRangeMax,
+        age_display: data.ageDisplay,
       }
       if (logoUrl) insertData.logo_url = logoUrl
       const { error } = await supabase.from("startups").insert([insertData]).select()
@@ -90,6 +99,9 @@ export default function StartupsPage() {
         name: data.name,
         wallet_address: data.walletAddress,
         description: data.description,
+        age_range_min: data.ageRangeMin,
+        age_range_max: data.ageRangeMax,
+        age_display: data.ageDisplay,
       }
       if (logoUrl) updateData.logo_url = logoUrl
       const { error } = await supabase.from("startups").update(updateData).eq("id", id).select()
@@ -131,12 +143,33 @@ export default function StartupsPage() {
         {error && <div className="text-red-500">{error}</div>}
         <EntityTable
           title="Startups"
-          entities={startups}
+          entities={startups.map(startup => {
+            // Генерируем английский текст возраста
+            const ageDisplay = startup.age_range_min && startup.age_range_max 
+              ? (startup.age_range_min === startup.age_range_max 
+                  ? `${startup.age_range_min} y.o.` 
+                  : `${startup.age_range_min}-${startup.age_range_max} y.o.`)
+              : startup.age_display || 'Age not set'
+            
+            return {
+              id: startup.id,
+              name: startup.name,
+              walletAddress: startup.walletAddress,
+              logo: startup.logo,
+              description: startup.description,
+              balance: 0,
+              ageDisplay: ageDisplay,
+              ageRangeMin: startup.age_range_min,
+              ageRangeMax: startup.age_range_max,
+            }
+          })}
           entityType="startup"
           onCreateEntity={handleCreateStartup}
           onUpdateEntity={handleUpdateStartup}
           onDeleteEntity={handleDeleteStartup}
-          extraColumns={[]}
+          extraColumns={[
+            { key: "ageDisplay", label: "Age" }
+          ]}
           showBalance={false}
           isLoading={isLoading}
         />

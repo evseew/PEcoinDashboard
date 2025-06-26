@@ -87,19 +87,45 @@ export function EntityListItem({ entity, index, pecoinMint, pecoinImg, alchemyAp
           {/* Entity Info */}
           <div className="flex-1 min-w-0 z-10">
             <div className="flex flex-col gap-1">
-              <h3 className={`font-display font-bold text-base sm:text-lg md:text-xl truncate group-hover:underline transition-colors duration-300 ${isTeam ? "group-hover:text-[#E63946]" : "group-hover:text-[#3457D5]"}`}>
-                {entity.name}
-              </h3>
-              
-              {/* Age display for teams - Enhanced design */}
-              {isTeam && (entity.age_display || entity.age_range_min) && (
-                <span className="text-xs text-gray-500 dark:text-gray-400 font-normal bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-md flex-shrink-0 whitespace-nowrap w-fit">
-                  {entity.age_range_min && entity.age_range_max 
-                    ? (entity.age_range_min === entity.age_range_max 
-                        ? `${entity.age_range_min} y.o.` 
-                        : `${entity.age_range_min}-${entity.age_range_max} y.o.`)
-                    : entity.age_display || 'Age not set'}
-                </span>
+              {/* Название для команд и стартапов */}
+              {isTeam ? (
+                <>
+                  {/* Команды: название и возраст на разных строках */}
+                  <h3 className={`font-display font-bold text-base sm:text-lg md:text-xl truncate group-hover:underline transition-colors duration-300 group-hover:text-[#E63946]`}>
+                    {entity.name}
+                  </h3>
+                  
+                  {/* Age display for teams - под названием */}
+                  {(entity.age_display || entity.age_range_min) && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400 font-normal bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-md flex-shrink-0 whitespace-nowrap w-fit">
+                      {entity.age_range_min && entity.age_range_max 
+                        ? (entity.age_range_min === entity.age_range_max 
+                            ? `${entity.age_range_min} y.o.` 
+                            : `${entity.age_range_min}-${entity.age_range_max} y.o.`)
+                        : entity.age_display || 'Age not set'}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Стартапы: название и возраст в одной строке */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className={`font-display font-bold text-base sm:text-lg md:text-xl truncate group-hover:underline transition-colors duration-300 group-hover:text-[#3457D5] flex-shrink-0`}>
+                      {entity.name}
+                    </h3>
+                    
+                    {/* Age display for startups - в одной строке с названием */}
+                    {(entity.age_display || entity.age_range_min) && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-normal bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-md flex-shrink-0 whitespace-nowrap">
+                        {entity.age_range_min && entity.age_range_max 
+                          ? (entity.age_range_min === entity.age_range_max 
+                              ? `${entity.age_range_min} y.o.` 
+                              : `${entity.age_range_min}-${entity.age_range_max} y.o.`)
+                          : entity.age_display || 'Age not set'}
+                      </span>
+                    )}
+                  </div>
+                </>
               )}
               
               {/* Description/tagline if available */}

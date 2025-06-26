@@ -112,7 +112,7 @@ export function AgeDisplay({
   return (
     <span 
       className={`inline-flex items-center gap-1 rounded-full ${sizeClasses[size]} ${colors.bg} ${colors.text} ${colors.border} border transition-all duration-200 hover:scale-105`}
-      title={`Team age: ${displayText}`}
+      title={`Age: ${displayText}`}
     >
       {showIcon && (
         <span className="text-sm" role="img" aria-label="age-indicator">

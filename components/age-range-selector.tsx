@@ -67,7 +67,7 @@ export function AgeRangeSelector({ value, onChange, error }: AgeRangeSelectorPro
     <div className="space-y-4">
       <Label className="text-sm font-medium flex items-center gap-2">
         <Users className="w-4 h-4" />
-                    Team age range
+        Age range
       </Label>
       
       {/* Предустановленные варианты */}

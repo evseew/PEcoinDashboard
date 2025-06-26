@@ -230,8 +230,8 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
                   />
                 </div>
 
-                {/* Age Range - только для команд */}
-                {entityType === "team" && (
+                {/* Age Range - для команд и стартапов */}
+                {(entityType === "team" || entityType === "startup") && (
                   <AgeRangeSelector
                     value={ageRange}
                     onChange={setAgeRange}

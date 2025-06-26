@@ -71,19 +71,17 @@ export function EntityList({ title, entities, type, currentSort, onSort, icon, c
           <h2 className="text-lg font-display font-bold">{title}</h2>
         </div>
         <div className="flex space-x-2">
-          {/* Кнопка сортировки по возрасту (только для команд) */}
-          {isTeam && (
-            <button
-              onClick={() => handleSort("age")}
-              className={`text-xs px-2 py-1 rounded-md font-medium border transition-all duration-300 ${
-                currentSort === "age"
-                  ? buttonBgActive
-                  : "bg-gray-100 dark:bg-gray-700 border-gray-100 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
-              }`}
-            >
-              Age <ArrowUpDown className="inline h-2 w-2 ml-1" />
-            </button>
-          )}
+          {/* Кнопка сортировки по возрасту (для команд и стартапов) */}
+          <button
+            onClick={() => handleSort("age")}
+            className={`text-xs px-2 py-1 rounded-md font-medium border transition-all duration-300 ${
+              currentSort === "age"
+                ? buttonBgActive
+                : "bg-gray-100 dark:bg-gray-700 border-gray-100 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600"
+            }`}
+          >
+            Age <ArrowUpDown className="inline h-2 w-2 ml-1" />
+          </button>
           <button
             onClick={() => handleSort("name")}
             className={`text-xs px-2 py-1 rounded-md font-medium border transition-all duration-300 ${

@@ -44,6 +44,18 @@ export default async function StartupsPage() {
                 <span className="text-xl font-semibold">{startup.name}</span>
               </div>
               <div className="text-gray-500 text-sm mb-2 truncate">{startup.wallet_address}</div>
+              {/* Age display */}
+              {(startup.age_display || startup.age_range_min) && (
+                <div className="mb-2">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-normal bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-md whitespace-nowrap">
+                    {startup.age_range_min && startup.age_range_max 
+                      ? (startup.age_range_min === startup.age_range_max 
+                          ? `${startup.age_range_min} y.o.` 
+                          : `${startup.age_range_min}-${startup.age_range_max} y.o.`)
+                      : startup.age_display || 'Age not set'}
+                  </span>
+                </div>
+              )}
               <div className="text-gray-700 dark:text-gray-300 text-base">{startup.description}</div>
             </Link>
           ))
