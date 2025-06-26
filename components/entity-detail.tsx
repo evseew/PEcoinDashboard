@@ -243,6 +243,7 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
   // Получение всех транзакций (PEcoin + NFT) - ЛЕНИВАЯ ЗАГРУЗКА
   const fetchHistory = useCallback(
     async (walletAddress: string, beforeSignature?: string) => {
+      console.log(`[EntityDetail] 🚀 fetchHistory STARTED для ${walletAddress}`)
       setHistoryError(null)
       setHistoryLoading(true) // Явно показываем загрузку
       
@@ -254,6 +255,9 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
         if (beforeSignature) {
           requestBody.beforeSignature = beforeSignature
         }
+
+        console.log(`[EntityDetail] 🔄 Отправляю параллельные запросы...`)
+        console.log(`[EntityDetail] 📦 Request body:`, requestBody)
 
         const [pecoinRes, nftRes] = await Promise.all([
           fetch("/api/pecoin-history", {
@@ -267,6 +271,13 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
             body: JSON.stringify({ walletAddress, limit: 10 }),
           })
         ])
+        
+        console.log(`[EntityDetail] 📡 Получены ответы:`, {
+          pecoinStatus: pecoinRes.status,
+          pecoinOk: pecoinRes.ok,
+          nftStatus: nftRes.status, 
+          nftOk: nftRes.ok
+        })
         
         let allTransactions: any[] = []
         let nextSignature: string | undefined
@@ -325,13 +336,36 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
     []
   )
 
-  // Автоматически загружаем историю при открытии детальной страницы участника
+  // Автоматически загружаем историю и NFT при открытии детальной страницы участника
   useEffect(() => {
-    if (entity?.wallet_address) {
-      console.log(`[EntityDetail] 🔍 Пользователь открыл детали ${entity.name}, загружаю историю...`)
-      fetchHistory(entity.wallet_address)
+    console.log(`[EntityDetail] 🔧 Debug useEffect triggered:`, {
+      hasEntity: !!entity,
+      entityName: entity?.name,
+      walletAddress: entity?.walletAddress,
+      entityType: typeof entity
+    })
+    
+    if (entity?.walletAddress) {
+      console.log(`[EntityDetail] 🔍 Пользователь открыл детали ${entity.name}, загружаю историю и NFT...`)
+      console.log(`[EntityDetail] 🎯 Wallet Address: ${entity.walletAddress}`)
+      
+      // Запускаем загрузку истории с дополнительным логированием
+      fetchHistory(entity.walletAddress).then(() => {
+        console.log(`[EntityDetail] ✅ История загружена для ${entity.name}`)
+      }).catch((error) => {
+        console.error(`[EntityDetail] ❌ Ошибка загрузки истории для ${entity.name}:`, error)
+      })
+      
+      // Запускаем загрузку NFT
+      fetchNFTCollection(entity.walletAddress).then(() => {
+        console.log(`[EntityDetail] ✅ NFT загружены для ${entity.name}`)
+      }).catch((error) => {
+        console.error(`[EntityDetail] ❌ Ошибка загрузки NFT для ${entity.name}:`, error)
+      })
+    } else {
+      console.log(`[EntityDetail] ⚠️ Нет entity или walletAddress для загрузки данных`)
     }
-  }, [entity?.wallet_address, fetchHistory])
+  }, [entity?.walletAddress, fetchHistory, fetchNFTCollection])
 
   const loadMoreTransactions = async () => {
     if (!nextBeforeSignature || !entity?.walletAddress || isLoadingMore) return

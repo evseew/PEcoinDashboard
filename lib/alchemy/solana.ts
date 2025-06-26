@@ -16,59 +16,14 @@ export function getAlchemyKey() {
   }
   return env;
 }
+
 export function getAlchemyUrl() {
-  const env = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "";
-  if (env.startsWith("https://")) return env;
-  return "https://solana-mainnet.g.alchemy.com/v2/" + env;
-}
-
-export async function getTokenMetadata(tokenMint: string): Promise<{ image?: string; uri?: string }> {
-  const now = Date.now()
-  const cached = tokenMetaCache.get(tokenMint)
-  if (cached && now - cached.ts < CACHE_TTL) {
-    return { image: cached.image, uri: cached.uri }
-  }
-
-  // Alchemy RPC
-  if (ALCHEMY_API_KEY) {
-    try {
-      const res = await fetch(ALCHEMY_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "getTokenMetadata",
-          params: [tokenMint],
-        }),
-        signal: AbortSignal.timeout(5000) // 5 секунд timeout
-      })
-      const data = await res.json()
-      if (data.result && data.result.logo) {
-        tokenMetaCache.set(tokenMint, { image: data.result.logo, uri: data.result.uri, ts: now })
-        return { image: data.result.logo, uri: data.result.uri }
-      }
-    } catch (e) {
-      // fallback
-    }
-  }
-
-  // Solscan fallback
-  try {
-    const solscanRes = await fetch(`https://public-api.solscan.io/token/meta?tokenAddress=${tokenMint}`)
-    const solscanData = await solscanRes.json()
-    if (solscanData.icon) {
-      tokenMetaCache.set(tokenMint, { image: solscanData.icon, ts: now })
-      return { image: solscanData.icon }
-    }
-  } catch (e) {
-    // fallback
-  }
-  return {}
+  const key = getAlchemyKey()
+  return `https://solana-mainnet.g.alchemy.com/v2/${key}`
 }
 
 /**
- * Получить баланс SPL токена для кошелька
+ * Получить баланс SPL токена для кошелька - УСКОРЕННАЯ ВЕРСИЯ
  */
 export async function getTokenBalance(owner: string, mint: string, apiKey: string): Promise<number> {
   const startTime = Date.now()
@@ -91,10 +46,10 @@ export async function getTokenBalance(owner: string, mint: string, apiKey: strin
     const attemptStart = Date.now()
     
     try {
-      console.log(`[Alchemy] 🔄 Попытка ${attempt}/${MAX_RETRIES} для ${owner.slice(0,8)}...`)
+      console.log(`[Alchemy] ⚡ Быстрый запрос ${attempt}/${MAX_RETRIES} для ${owner.slice(0,8)}...`)
       
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 секунд timeout
+      const timeoutId = setTimeout(() => controller.abort(), 5000) // УМЕНЬШЕНО: 5 секунд вместо 8
       
       const res = await fetch(url, {
         method: "POST",
@@ -147,13 +102,80 @@ export async function getTokenBalance(owner: string, mint: string, apiKey: strin
         throw lastError
       }
       
-      // Пауза перед повторной попыткой
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+      // УМЕНЬШЕНА пауза перед повторной попыткой - для скорости
+      await new Promise(resolve => setTimeout(resolve, 300 * attempt)) // Было: 1000 * attempt
     }
   }
   
   // Этот код никогда не должен выполниться, но для TypeScript
   throw lastError || new Error('Unknown error')
+}
+
+/**
+ * Получить баланс SPL токена (альтернативный метод для совместимости)
+ */
+export async function getSplTokenBalance({
+  owner,
+  mint
+}: {
+  owner: string
+  mint: string
+}): Promise<number> {
+  const apiKey = getAlchemyKey()
+  return getTokenBalance(owner, mint, apiKey)
+}
+
+/**
+ * Получить метаданные токена
+ */
+export async function getTokenMetadata(mintAddress: string): Promise<{ image?: string; uri?: string } | null> {
+  try {
+    // Проверяем кэш
+    const cached = tokenMetaCache.get(mintAddress)
+    if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
+      return { image: cached.image, uri: cached.uri }
+    }
+
+    const response = await fetch(ALCHEMY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'getTokenMetadata',
+        params: { mint: mintAddress }
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+
+    const data = await response.json()
+    
+    if (data.error) {
+      console.error('Alchemy API error:', data.error)
+      return null
+    }
+
+    const metadata = data.result
+    const result = {
+      image: metadata?.offChainMetadata?.image,
+      uri: metadata?.uri
+    }
+
+    // Сохраняем в кэш
+    tokenMetaCache.set(mintAddress, {
+      image: result.image,
+      uri: result.uri,
+      ts: Date.now()
+    })
+
+    return result
+  } catch (error) {
+    console.error('Error fetching token metadata:', error)
+    return null
+  }
 }
 
 /**

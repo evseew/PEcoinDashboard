@@ -34,6 +34,7 @@ export async function getCachedTokenBalance({ owner, mint, apiKey }: TokenBalanc
 
 /**
  * Получить балансы для нескольких кошельков одновременно с кэшированием
+ * ОПТИМИЗИРОВАНО для высокой производительности
  */
 export async function getCachedTokenBalances(
   wallets: string[],
@@ -43,58 +44,68 @@ export async function getCachedTokenBalances(
   const startTime = Date.now()
   const results = new Map<string, number>()
   
-  console.log(`[CachedTokenBalances] 🔄 Запрос ${wallets.length} балансов`)
+  console.log(`[CachedTokenBalances] 🚀 УСКОРЕННЫЙ запрос ${wallets.length} балансов`)
   
-  // Batch размер зависит от окружения - на продакшене меньше для избежания rate limiting
-  const BATCH_SIZE = process.env.NODE_ENV === 'production' ? 3 : 8
+  // ЗНАЧИТЕЛЬНО увеличиваем размер батчей для ускорения
+  const BATCH_SIZE = process.env.NODE_ENV === 'production' ? 12 : 20 // Было: 3:8
+  const MAX_PARALLEL_BATCHES = process.env.NODE_ENV === 'production' ? 3 : 4 // Параллельно обрабатываем несколько батчей
+  
   const batches = []
-  
   for (let i = 0; i < wallets.length; i += BATCH_SIZE) {
     batches.push(wallets.slice(i, i + BATCH_SIZE))
   }
   
-  console.log(`[CachedTokenBalances] 📦 Обрабатываю ${wallets.length} кошельков в ${batches.length} батчах по ${BATCH_SIZE}`)
+  console.log(`[CachedTokenBalances] ⚡ Обрабатываю ${wallets.length} кошельков в ${batches.length} батчах по ${BATCH_SIZE} (${MAX_PARALLEL_BATCHES} параллельно)`)
   
-  // Обрабатываем пачки последовательно, но внутри пачки - параллельно
-  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-    const batch = batches[batchIndex]
+  // НОВЫЙ ПОДХОД: Обрабатываем несколько батчей параллельно
+  for (let i = 0; i < batches.length; i += MAX_PARALLEL_BATCHES) {
+    const parallelBatches = batches.slice(i, i + MAX_PARALLEL_BATCHES)
     const batchStart = Date.now()
     
-    console.log(`[CachedTokenBalances] 🎯 Batch ${batchIndex + 1}/${batches.length}: ${batch.length} кошельков`)
+    console.log(`[CachedTokenBalances] 🎯 Параллельная группа ${Math.floor(i/MAX_PARALLEL_BATCHES) + 1}: ${parallelBatches.length} батчей`)
     
-    const batchPromises = batch.map(async (wallet, index) => {
-      const walletStart = Date.now()
-      try {
-        const balance = await getCachedTokenBalance({ owner: wallet, mint, apiKey })
-        const walletTime = Date.now() - walletStart
-        console.log(`[CachedTokenBalances] 💰 Кошелек ${wallet.slice(0,8)}...: ${balance} (${walletTime}ms)`)
-        return { wallet, balance }
-      } catch (error) {
-        const walletTime = Date.now() - walletStart
-        console.error(`[CachedTokenBalances] ❌ Ошибка ${wallet.slice(0,8)}... за ${walletTime}ms:`, error)
-        return { wallet, balance: 0 }
-      }
-    })
+    // Обрабатываем батчи параллельно
+    const parallelResults = await Promise.all(
+      parallelBatches.map(async (batch, batchIndex) => {
+        const actualBatchIndex = i + batchIndex
+        console.log(`[CachedTokenBalances] 🔥 Batch ${actualBatchIndex + 1}/${batches.length}: ${batch.length} кошельков`)
+        
+        // Внутри каждого батча тоже параллельно
+        const batchPromises = batch.map(async (wallet) => {
+          const walletStart = Date.now()
+          try {
+            const balance = await getCachedTokenBalance({ owner: wallet, mint, apiKey })
+            const walletTime = Date.now() - walletStart
+            console.log(`[CachedTokenBalances] 💰 ${wallet.slice(0,8)}...: ${balance} (${walletTime}ms)`)
+            return { wallet, balance }
+          } catch (error) {
+            const walletTime = Date.now() - walletStart
+            console.error(`[CachedTokenBalances] ❌ Ошибка ${wallet.slice(0,8)}... за ${walletTime}ms:`, error)
+            return { wallet, balance: 0 }
+          }
+        })
+        
+        return await Promise.all(batchPromises)
+      })
+    )
     
-    const batchResults = await Promise.all(batchPromises)
-    const batchTime = Date.now() - batchStart
-    
-    // Заполняем карту результатов
-    batchResults.forEach(({ wallet, balance }) => {
+    // Собираем результаты из всех параллельных батчей
+    parallelResults.flat().forEach(({ wallet, balance }) => {
       results.set(wallet, balance)
     })
     
-    console.log(`[CachedTokenBalances] ✅ Batch ${batchIndex + 1} завершен за ${batchTime}ms`)
+    const batchTime = Date.now() - batchStart
+    console.log(`[CachedTokenBalances] ✅ Параллельная группа завершена за ${batchTime}ms`)
     
-    // Пауза между пачками только на продакшене и если есть еще пачки
-    if (process.env.NODE_ENV === 'production' && batchIndex < batches.length - 1) {
-      console.log(`[CachedTokenBalances] ⏸️ Пауза между батчами...`)
-      await new Promise(resolve => setTimeout(resolve, 500))
+    // Минимальная пауза только между группами параллельных батчей (не между отдельными батчами)
+    if (i + MAX_PARALLEL_BATCHES < batches.length) {
+      console.log(`[CachedTokenBalances] ⏸️ Микропауза между группами...`)
+      await new Promise(resolve => setTimeout(resolve, 100)) // Уменьшено с 500мс до 100мс
     }
   }
   
   const totalTime = Date.now() - startTime
-  console.log(`[CachedTokenBalances] 🏁 Все ${wallets.length} балансов получены за ${totalTime}ms`)
+  console.log(`[CachedTokenBalances] 🏁 УСКОРЕНО! Все ${wallets.length} балансов получены за ${totalTime}ms`)
   
   return results
 }
@@ -103,5 +114,5 @@ export async function getCachedTokenBalances(
  * Инвалидировать кэш балансов для определенного кошелька
  */
 export function invalidateWalletCache(walletAddress: string): void {
-  serverCache.invalidate(`token-balance:owner:${walletAddress}`)
+  serverCache.invalidate(`token-balance:${walletAddress}`)
 } 

@@ -14,14 +14,15 @@ class ServerCache {
   private pendingRequests = new Map<string, Promise<any>>()
 
   // Время жизни для разных типов данных (в миллисекундах)
+  // ОПТИМИЗИРОВАНО для скорости загрузки
   private readonly TTL_CONFIG = {
     NFT_COLLECTION: 10 * 60 * 1000,    // 10 минут - NFT меняются редко
-    TOKEN_BALANCE: 5 * 60 * 1000,      // 5 минут - балансы меняются чаще (было 2 минуты)
+    TOKEN_BALANCE: 10 * 60 * 1000,     // 10 минут - балансы кешируем дольше для скорости (было 5 минут)
     NFT_METADATA: 30 * 60 * 1000,      // 30 минут - метаданные неизменны
     WALLET_INFO: 5 * 60 * 1000,        // 5 минут - общая информация кошелька
-    TRANSACTION_HISTORY: 2 * 60 * 1000, // 2 минуты - история транзакций 
-    TRANSACTION_HISTORY_EMPTY: 30 * 1000, // 30 секунд - пустая история (кошелек без транзакций)
-    NFT_TRANSACTIONS: 1 * 60 * 1000,   // 1 минута - NFT транзакции
+    TRANSACTION_HISTORY: 3 * 60 * 1000, // 3 минуты - история транзакций (было 2 минуты)
+    TRANSACTION_HISTORY_EMPTY: 60 * 1000, // 1 минута - пустая история (было 30 секунд)
+    NFT_TRANSACTIONS: 2 * 60 * 1000,   // 2 минуты - NFT транзакции (было 1 минута)
   }
 
   /**
@@ -79,20 +80,20 @@ class ServerCache {
       cached.accessCount++
       cached.lastAccess = now
       const age = Math.round((now - cached.timestamp) / 1000)
-      console.log(`🎯 Cache HIT: ${key} (возраст: ${age}s, обращений: ${cached.accessCount})`)
+      console.log(`🎯 Cache HIT: ${key.slice(0,50)}... (возраст: ${age}s, обращений: ${cached.accessCount})`)
       return cached.data
     }
 
     // Проверяем, нет ли уже выполняющегося запроса
     const pending = this.pendingRequests.get(key)
     if (pending) {
-      console.log(`⏳ Ожидание выполняющегося запроса: ${key}`)
+      console.log(`⏳ Ожидание выполняющегося запроса: ${key.slice(0,50)}...`)
       return await pending
     }
 
     // Выполняем новый запрос
     const cacheAge = cached ? Math.round((now - cached.timestamp) / 1000) : 0
-    console.log(`🔄 Cache MISS: ${key} ${cached ? `(устарел на ${cacheAge}s)` : '(новый ключ)'} - загружаем данные`)
+    console.log(`🔄 Cache MISS: ${key.slice(0,50)}... ${cached ? `(устарел на ${cacheAge}s)` : '(новый ключ)'} - загружаем данные`)
     const fetchPromise = this.executeFetch(key, fetcher, ttl)
     this.pendingRequests.set(key, fetchPromise)
 
@@ -122,7 +123,7 @@ class ServerCache {
 
       return data
     } catch (error) {
-      console.error(`❌ Error fetching data for key ${key}:`, error)
+      console.error(`❌ Error fetching data for key ${key.slice(0,50)}...:`, error)
       throw error
     }
   }
@@ -138,7 +139,9 @@ class ServerCache {
         removed++
       }
     }
-    console.log(`🗑️ Invalidated ${removed} cache entries matching: ${keyPattern}`)
+    if (removed > 0) {
+      console.log(`🗑️ Invalidated ${removed} cache entries matching: ${keyPattern}`)
+    }
     return removed
   }
 

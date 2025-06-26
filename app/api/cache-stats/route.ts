@@ -69,4 +69,83 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { action, type } = body
+
+    switch (action) {
+      case 'clear':
+        if (type) {
+          // Очистка конкретного типа кеша
+          const removed = serverCache.invalidate(type)
+          console.log(`🧹 Очищен кеш типа ${type}: ${removed} записей`)
+          return NextResponse.json({
+            success: true,
+            message: `Cleared ${removed} ${type} cache entries`,
+            removed
+          })
+        } else {
+          // Полная очистка кеша
+          const beforeStats = serverCache.getStats()
+          serverCache.invalidate('') // Очищает все
+          const afterStats = serverCache.getStats()
+          
+          console.log(`🧹 Полная очистка кеша: ${beforeStats.totalItems} записей`)
+          return NextResponse.json({
+            success: true,
+            message: `Cleared all cache (${beforeStats.totalItems} entries)`,
+            before: beforeStats,
+            after: afterStats
+          })
+        }
+
+      case 'cleanup':
+        // Очистка устаревших записей
+        const cleaned = serverCache.cleanup()
+        console.log(`🗑️ Очищено устаревших записей: ${cleaned}`)
+        return NextResponse.json({
+          success: true,
+          message: `Cleaned up ${cleaned} expired entries`,
+          cleaned
+        })
+
+      case 'gc':
+        // Принудительная сборка мусора (если доступна)
+        if (global.gc) {
+          global.gc()
+          console.log(`♻️ Выполнена сборка мусора`)
+          return NextResponse.json({
+            success: true,
+            message: 'Garbage collection executed'
+          })
+        } else {
+          return NextResponse.json({
+            success: false,
+            message: 'Garbage collection not available (run with --expose-gc)'
+          })
+        }
+
+      case 'warmup':
+        // Предварительный прогрев кеша (будущая функция)
+        return NextResponse.json({
+          success: true,
+          message: 'Cache warmup started (feature not implemented yet)'
+        })
+
+      default:
+        return NextResponse.json(
+          { error: `Unknown action: ${action}` },
+          { status: 400 }
+        )
+    }
+  } catch (error) {
+    console.error('[Cache Stats] Error processing action:', error)
+    return NextResponse.json(
+      { error: 'Failed to process cache action' },
+      { status: 500 }
+    )
+  }
 } 
