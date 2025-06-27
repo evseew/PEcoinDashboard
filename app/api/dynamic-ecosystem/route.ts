@@ -30,11 +30,11 @@ export async function GET(request: NextRequest) {
         })
 
       case 'participants':
-        // Получить список всех участников
-        const participants = dynamicEcosystemCache.getAllParticipants()
+        // Получить список всех участников с балансами (устраняем дублирование запросов)
+        const participantsWithBalances = dynamicEcosystemCache.getAllParticipantsWithBalances()
         return NextResponse.json({ 
           success: true, 
-          participants 
+          participants: participantsWithBalances 
         })
 
       default:

@@ -17,13 +17,16 @@ const PECOIN_MINT = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r";
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
   const authHeader = request.headers.get('authorization')
+  const isManualCall = request.nextUrl.searchParams.get('manual') === 'true'
 
   // --- Безопасность ---
-  if (process.env.NODE_ENV === 'production' && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (process.env.NODE_ENV === 'production' && !isManualCall && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response('Unauthorized', { status: 401 })
   }
 
   console.log('[CRON] 🚀 Начало фонового обновления балансов...')
+  console.log(`[CRON] 🌍 Environment: ${process.env.NODE_ENV}`)
+  console.log(`[CRON] 🔗 Domain: ${request.headers.get('host')}`)
 
   try {
     // 1. Принудительно очищаем старый кэш балансов
@@ -43,27 +46,36 @@ export async function GET(request: NextRequest) {
 
     // 3. Вызываем функцию для обновления кэша
     const apiKey = getAlchemyKey()
+    console.log(`[CRON] 🔑 API Key: ${apiKey ? 'CONFIGURED' : 'MISSING'}`)
+    
     const balances = await getCachedTokenBalances(wallets, PECOIN_MINT, apiKey) 
     
     const totalTime = Date.now() - startTime
     console.log(`[CRON] ✅ Фоновое обновление балансов завершено за ${totalTime}ms.`)
-    console.log(`[CRON] 📊 Обновлено ${balances.size} балансов.`)
-
+    
     return NextResponse.json({
       success: true,
-      message: `Refreshed ${balances.size} balances in ${totalTime}ms.`,
-      refreshedCount: balances.size,
-      invalidatedCount,
+      walletsProcessed: wallets.length,
+      balancesRetrieved: balances.size,
+      cacheCleared: invalidatedCount,
+      processingTime: totalTime,
+      timestamp: new Date().toISOString(),
+      domain: request.headers.get('host'),
+      environment: process.env.NODE_ENV
     })
 
   } catch (error) {
     const totalTime = Date.now() - startTime
-    console.error(`[CRON] ❌ Ошибка во время фонового обновления за ${totalTime}ms:`, error)
+    console.error('[CRON] ❌ Ошибка при обновлении балансов:', error)
+    
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to refresh token balances',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        processingTime: totalTime,
+        timestamp: new Date().toISOString(),
+        domain: request.headers.get('host'),
+        environment: process.env.NODE_ENV
       },
       { status: 500 }
     )

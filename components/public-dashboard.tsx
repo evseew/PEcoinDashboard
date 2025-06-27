@@ -112,62 +112,67 @@ export function PublicDashboard() {
     fetchData()
   }, [])
 
-  // Групповая загрузка балансов для всех участников
+  // Простая групповая загрузка балансов для всех участников  
   useEffect(() => {
     const fetchAllBalances = async () => {
       if (teams.length === 0 && startups.length === 0) return
       
-      const startTime = Date.now()
-      console.log('[PublicDashboard] Начинаю групповую загрузку балансов...')
-      
+      console.log('[PublicDashboard] Загружаю балансы для всех участников...')
       setBalancesLoading(true)
       
       try {
         // Собираем все уникальные адреса кошельков
         const teamWallets = teams.filter(team => team.wallet_address).map(team => team.wallet_address)
         const startupWallets = startups.filter(startup => startup.wallet_address).map(startup => startup.wallet_address)
-        const allWallets = [...new Set([...teamWallets, ...startupWallets])] // убираем дубликаты
+        const allWallets = [...new Set([...teamWallets, ...startupWallets])]
         
         if (allWallets.length === 0) {
+          console.log('[PublicDashboard] Нет кошельков для загрузки балансов')
           setBalancesLoading(false)
           return
         }
         
-        console.log(`[PublicDashboard] Загружаю балансы для ${allWallets.length} кошельков одним запросом`)
-        
-        // Один запрос для всех кошельков
+        // ОДИН запрос для всех балансов
         const response = await fetch('/api/token-balances', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            wallets: allWallets, 
+            wallets: allWallets,
             mint: pecoinMint 
           }),
         })
         
         if (response.ok) {
           const data = await response.json()
-          const fetchedBalances = data.balances || {}
+          setBalances(data.balances || {})
           
-          setBalances(fetchedBalances)
+          // Подсчитываем суммы
+          let teamSum = 0
+          let startupSum = 0
           
-          // Подсчитываем суммы для команд и стартапов
-          const teamSum = teamWallets.reduce((sum, wallet) => sum + (fetchedBalances[wallet] || 0), 0)
-          const startupSum = startupWallets.reduce((sum, wallet) => sum + (fetchedBalances[wallet] || 0), 0)
+          teams.forEach(team => {
+            const balance = data.balances[team.wallet_address] || 0
+            teamSum += balance
+          })
+          
+          startups.forEach(startup => {
+            const balance = data.balances[startup.wallet_address] || 0
+            startupSum += balance
+          })
           
           setTotalTeamCoins(teamSum)
           setTotalStartupCoins(startupSum)
           setTotalCoins(teamSum + startupSum)
           
-          console.log(`[PublicDashboard] Балансы загружены за ${Date.now() - startTime}ms`)
+          console.log(`[PublicDashboard] Балансы загружены: ${allWallets.length} кошельков, ${teamSum + startupSum} PEcoin`)
         } else {
           console.error('[PublicDashboard] Ошибка загрузки балансов:', response.status)
           setTotalTeamCoins(0)
-          setTotalStartupCoins(0)
+          setTotalStartupCoins(0)  
           setTotalCoins(0)
         }
       } catch (error) {
-        console.error('[PublicDashboard] Критическая ошибка загрузки балансов:', error)
+        console.error('[PublicDashboard] Ошибка получения балансов:', error)
         setTotalTeamCoins(0)
         setTotalStartupCoins(0)
         setTotalCoins(0)

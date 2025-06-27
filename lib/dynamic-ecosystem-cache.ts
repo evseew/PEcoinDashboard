@@ -325,6 +325,16 @@ class DynamicEcosystemCache {
   }
 
   /**
+   * Получить всех участников С балансами (для устранения дублирования запросов)
+   */
+  getAllParticipantsWithBalances(): Array<DynamicParticipant & { balance: number }> {
+    return this.ecosystemData.participants.map(participant => ({
+      ...participant,
+      balance: this.ecosystemData.balances.get(participant.walletAddress) || 0
+    }))
+  }
+
+  /**
    * Принудительное обновление данных конкретного участника
    */
   async refreshParticipant(walletAddress: string): Promise<void> {
@@ -390,24 +400,32 @@ class DynamicEcosystemCache {
   }
 
   /**
-   * Запуск периодических обновлений
+   * Запуск периодических обновлений (ОТКЛЮЧЕНО для production для снижения нагрузки)
    */
   private startPeriodicRefresh(): void {
+    // ОТКЛЮЧЕНО для production - слишком большая нагрузка на API
+    if (process.env.NODE_ENV === 'production') {
+      console.log('⚠️ Периодические обновления отключены для production (снижение нагрузки на API)')
+      return
+    }
+    
     // Остановка существующих таймеров
     if (this.refreshTimer) clearInterval(this.refreshTimer)
     if (this.participantsTimer) clearInterval(this.participantsTimer)
     
-    // Обновление данных каждые 10 минут
+    // Обновление данных каждые 10 минут (только для development)
     this.refreshTimer = setInterval(() => {
       console.log(`⏰ Периодическое обновление данных экосистемы`)
       this.refreshAllData()
     }, this.GLOBAL_REFRESH_INTERVAL)
     
-    // Обновление списка участников каждые 30 минут
+    // Обновление списка участников каждые 30 минут (только для development)
     this.participantsTimer = setInterval(() => {
       console.log(`⏰ Периодическое обновление списка участников`)
       this.refreshParticipants()
     }, this.PARTICIPANTS_REFRESH_INTERVAL)
+    
+    console.log('✅ Периодические обновления запущены (development режим)')
   }
 
   /**
