@@ -35,11 +35,5 @@
         }
       ]
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron/refresh-balances",
-      "schedule": "0,15,30,45 * * * *"
-    }
   ]
 } 
