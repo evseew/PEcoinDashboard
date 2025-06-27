@@ -7,6 +7,15 @@ let isInitializing = false
 
 export async function POST(request: NextRequest) {
   try {
+    // ОТКЛЮЧЕНО для production - дублирует запросы балансов с PublicDashboard
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Ecosystem initialization disabled for production environment to prevent duplicate balance requests',
+        productionMode: true
+      })
+    }
+
     if (isInitialized) {
       const stats = dynamicEcosystemCache.getEcosystemStats()
       return NextResponse.json({ 
@@ -26,9 +35,9 @@ export async function POST(request: NextRequest) {
     }
 
     isInitializing = true
-    console.log('🌐 Запуск автоматической инициализации динамической экосистемы...')
+    console.log('🌐 Запуск автоматической инициализации динамической экосистемы... (development)')
 
-    // Инициализация в фоновом режиме
+    // Инициализация в фоновом режиме (только для development)
     dynamicEcosystemCache.autoInitialize()
       .then(() => {
         isInitialized = true
@@ -42,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Dynamic ecosystem initialization started',
+      message: 'Dynamic ecosystem initialization started (development mode)',
       initializing: true
     })
 
@@ -61,7 +70,8 @@ export async function GET(request: NextRequest) {
     success: true,
     status: {
       initialized: isInitialized,
-      initializing: isInitializing
+      initializing: isInitializing,
+      productionMode: process.env.NODE_ENV === 'production'
     },
     stats: isInitialized ? dynamicEcosystemCache.getEcosystemStats() : null
   })

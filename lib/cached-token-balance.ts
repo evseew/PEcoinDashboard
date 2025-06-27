@@ -1,5 +1,5 @@
 // Кэшированная версия получения балансов SPL токенов
-// Избегает дублирования запросов при высокой нагрузке
+// Простая и быстрая версия без rate limiting
 
 import { getTokenBalance } from './alchemy/solana'
 import { serverCache, ServerCache } from './server-cache'
@@ -12,10 +12,6 @@ interface TokenBalanceRequest {
   mint: string 
   apiKey: string
 }
-
-// Защита от перегрузки - отслеживание времени последних запросов
-const lastBatchRequestTime = new Map<string, number>()
-const MIN_BATCH_INTERVAL = process.env.NODE_ENV === 'production' ? 30000 : 10000 // 30 секунд для production, 10 для dev
 
 /**
  * Получить баланс SPL токена с кэшированием
@@ -38,7 +34,7 @@ export async function getCachedTokenBalance({ owner, mint, apiKey }: TokenBalanc
 
 /**
  * Получить балансы для нескольких кошельков одновременно с кэшированием
- * ПРОСТАЯ И БЫСТРАЯ версия с защитой от перегрузки
+ * ПРОСТАЯ И БЫСТРАЯ версия без rate limiting
  */
 export async function getCachedTokenBalances(
   wallets: string[],
@@ -48,22 +44,9 @@ export async function getCachedTokenBalances(
   const startTime = Date.now()
   const results = new Map<string, number>()
   
-  // Защита от слишком частых batch запросов
-  const batchKey = `${mint}:${wallets.length}`
-  const lastRequestTime = lastBatchRequestTime.get(batchKey) || 0
-  const timeSinceLastRequest = Date.now() - lastRequestTime
-  
-  if (timeSinceLastRequest < MIN_BATCH_INTERVAL) {
-    const waitTime = MIN_BATCH_INTERVAL - timeSinceLastRequest
-    console.log(`[CachedTokenBalances] ⏸️ Rate limiting: ожидание ${waitTime}ms`)
-    await new Promise(resolve => setTimeout(resolve, waitTime))
-  }
-  
-  lastBatchRequestTime.set(batchKey, Date.now())
-  
   console.log(`[CachedTokenBalances] 🚀 Запрос балансов для ${wallets.length} кошельков`)
   
-  // Простые параллельные запросы без сложных батчей
+  // Простые параллельные запросы без rate limiting
   const promises = wallets.map(async (wallet) => {
     try {
       const balance = await getCachedTokenBalance({ owner: wallet, mint, apiKey })

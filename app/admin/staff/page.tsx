@@ -126,7 +126,7 @@ export default function StaffPage() {
               label: "NFT",
             },
           ]}
-          showBalance={true}
+          showBalance={false}
           isLoading={isLoading}
         />
       </div>

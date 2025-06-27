@@ -420,9 +420,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Wallet address is required" }, { status: 400 });
     }
 
-    // Проверяем инициализацию экосистемы в самом начале
+    // Проверяем инициализацию экосистемы в самом начале (ОТКЛЮЧЕНО для production)
     let participants = dynamicEcosystemCache.getAllParticipants()
-    if (participants.length === 0) {
+    if (participants.length === 0 && process.env.NODE_ENV !== 'production') {
       console.log('[PEcoin History API] 🚀 Экосистема не инициализирована, запускаем инициализацию...')
       try {
         await dynamicEcosystemCache.refreshParticipants()
@@ -431,6 +431,8 @@ export async function POST(request: Request) {
       } catch (error) {
         console.error('[PEcoin History API] ❌ Ошибка предзагрузки участников:', error)
       }
+    } else if (process.env.NODE_ENV === 'production') {
+      console.log('[PEcoin History API] ⚠️ Инициализация экосистемы отключена для production')
     }
 
     // Создаем ключ кэша с учетом всех параметров

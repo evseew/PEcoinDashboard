@@ -99,22 +99,18 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
   const pecoinImg = useTokenImageUrl(pecoinMint, "/images/pecoin.png")
   const alchemyApiKey = "VYK2v9vubZLxKwE9-ASUeQC6b1-zaVb1"
 
-  // Все хуки должны быть вызваны до любого return!
+  // Состояния для данных
+  const [entity, setEntity] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [entity, setEntity] = useState<any>(null)
   const [transactions, setTransactions] = useState<any[]>([])
   const [nfts, setNfts] = useState<any[]>([])
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [historyError, setHistoryError] = useState<string | null>(null)
-  const [nextBeforeSignature, setNextBeforeSignature] = useState<string | undefined>(undefined)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [nftsLoading, setNftsLoading] = useState(false)
   const [nftsError, setNftsError] = useState<string | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
-  const [showTransactions, setShowTransactions] = useState(false)
-  const [showNFTs, setShowNFTs] = useState(false)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const [nextBeforeSignature, setNextBeforeSignature] = useState<string | undefined>()
+  const [profileImage, setProfileImage] = useState<string | null>(null)
 
   const isTeam = entityType === "teams" || entityType === "team"
 
@@ -373,47 +369,25 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
     []
   )
 
-  // Функция для загрузки транзакций по клику
-  const loadTransactions = async () => {
-    if (!entity?.walletAddress || historyLoading || transactions.length > 0) return
-    
-    console.log(`[EntityDetail] 🔍 Пользователь запросил историю для ${entity.name}`)
-    setShowTransactions(true)
-    
-    // Очищаем предыдущие данные
-    setTransactions([])
-    setHistoryError(null)
-    
-    await fetchHistory(entity.walletAddress)
-  }
-  
-  // Функция для загрузки NFT по клику
-  const loadNFTs = async () => {
-    if (!entity?.walletAddress || nftsLoading || nfts.length > 0) return
-    
-    console.log(`[EntityDetail] 🔍 Пользователь запросил NFT для ${entity.name}`)
-    setShowNFTs(true)
-    
-    // Очищаем предыдущие данные
-    setNfts([])
-    setNftsError(null)
-    
-    await fetchNFTCollection(entity.walletAddress)
-  }
-
-  const loadMoreTransactions = async () => {
-    if (!nextBeforeSignature || !entity?.walletAddress || isLoadingMore) return
-    
-    setIsLoadingMore(true)
-    try {
-      await fetchHistory(entity.walletAddress, nextBeforeSignature)
-    } finally {
-      setIsLoadingMore(false)
+  // Автоматическая загрузка NFT и транзакций при загрузке entity
+  useEffect(() => {
+    if (entity?.walletAddress) {
+      console.log(`[EntityDetail] 🚀 Автоматически загружаю данные для ${entity.name}`)
+      // Загружаем NFT коллекцию
+      fetchNFTCollection(entity.walletAddress)
+      // Загружаем историю транзакций (первые 10)
+      fetchHistory(entity.walletAddress)
     }
+  }, [entity?.walletAddress, fetchNFTCollection, fetchHistory])
+
+  // Функция для загрузки следующих транзакций
+  const loadMoreTransactions = async () => {
+    if (!nextBeforeSignature || !entity?.walletAddress) return
+    
+    await fetchHistory(entity.walletAddress, nextBeforeSignature)
   }
 
   const handlePageChange = (newPage: number) => {
-    setPage(newPage)
     setLoading(true)
   }
 
@@ -607,34 +581,7 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
               </div>
               
               <div className="px-2">
-                {!showNFTs ? (
-                  // Кнопка для ленивой загрузки NFT
-                  <div className="text-center py-10">
-                    <motion.div
-                      className="mb-4"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
-                      <CampIcon type="nft" size="lg" />
-                    </motion.div>
-                    <p className="text-gray-500 dark:text-gray-400 mb-6">
-                      Нажмите чтобы загрузить NFT коллекцию
-                    </p>
-                    <motion.button
-                      onClick={loadNFTs}
-                      disabled={nftsLoading}
-                      className={`px-6 py-3 rounded-xl border-2 font-medium transition-all disabled:opacity-50 ${
-                        isTeam 
-                          ? "border-[#E63946] text-[#E63946] hover:bg-[#E63946] hover:text-white" 
-                          : "border-[#6ABECD] text-[#6ABECD] hover:bg-[#6ABECD] hover:text-white"
-                      }`}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {nftsLoading ? "Загружается..." : "🖼️ Загрузить NFT"}
-                    </motion.button>
-                  </div>
-                ) : nftsLoading ? (
+                {nftsLoading ? (
                   <div className="flex items-center justify-center py-10">
                     <motion.div
                       className={`w-8 h-8 border-4 border-t-transparent rounded-full ${isTeam ? "border-[#E63946]" : "border-[#6ABECD]"}`}
@@ -647,7 +594,7 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
                   <div className="text-center py-10">
                     <div className="text-red-500 mb-2">{nftsError}</div>
                     <motion.button
-                      onClick={loadNFTs}
+                      onClick={() => fetchNFTCollection(entity?.walletAddress || '')}
                       className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                         isTeam 
                           ? "border-[#E63946] text-[#E63946] hover:bg-[#E63946] hover:text-white" 
@@ -658,6 +605,19 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
                     >
                       Попробовать снова
                     </motion.button>
+                  </div>
+                ) : nfts.length === 0 ? (
+                  <div className="text-center py-10">
+                    <motion.div
+                      className="mb-4 opacity-50"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 0.5, y: 0 }}
+                    >
+                      <CampIcon type="nft" size="lg" />
+                    </motion.div>
+                    <p className="text-gray-500 dark:text-gray-400">
+                      Нет NFT в коллекции
+                    </p>
                   </div>
                 ) : (
                   <NftGrid nfts={nfts} />
@@ -704,38 +664,20 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
                 )}
               </div>
               
-              {!showTransactions ? (
-                // Кнопка для ленивой загрузки транзакций
-                <div className="text-center py-10">
+              {historyLoading ? (
+                <div className="flex items-center justify-center py-10">
                   <motion.div
-                    className="mb-4"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                  >
-                    <CampIcon type="social" size="lg" />
-                  </motion.div>
-                  <p className="text-gray-500 dark:text-gray-400 mb-6">
-                    Нажмите чтобы загрузить историю транзакций
-                  </p>
-                  <motion.button
-                    onClick={loadTransactions}
-                    disabled={historyLoading}
-                    className={`px-6 py-3 rounded-xl border-2 font-medium transition-all disabled:opacity-50 ${
-                      isTeam 
-                        ? "border-[#E63946] text-[#E63946] hover:bg-[#E63946] hover:text-white" 
-                        : "border-[#6ABECD] text-[#6ABECD] hover:bg-[#6ABECD] hover:text-white"
-                    }`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {historyLoading ? "Загружается..." : "📊 Загрузить транзакции"}
-                  </motion.button>
+                    className={`w-8 h-8 border-4 border-t-transparent rounded-full ${isTeam ? "border-[#E63946]" : "border-[#6ABECD]"}`}
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                  />
+                  <span className="ml-3 text-gray-600 dark:text-gray-400">Загружаем историю транзакций...</span>
                 </div>
               ) : historyError ? (
                 <div className="text-center py-10">
                   <div className="text-red-500 mb-2">{historyError}</div>
                   <motion.button
-                    onClick={loadTransactions}
+                    onClick={() => fetchHistory(entity?.walletAddress || '')}
                     className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                       isTeam 
                         ? "border-[#E63946] text-[#E63946] hover:bg-[#E63946] hover:text-white" 
@@ -747,38 +689,42 @@ export function EntityDetail({ entityType, entityId }: EntityDetailProps) {
                     Попробовать снова
                   </motion.button>
                 </div>
-              ) : historyLoading && transactions.length === 0 ? (
-                <div className="flex items-center justify-center py-10">
+              ) : transactions.length === 0 ? (
+                <div className="text-center py-10">
                   <motion.div
-                    className={`w-8 h-8 border-4 border-t-transparent rounded-full ${isTeam ? "border-[#E63946]" : "border-[#6ABECD]"}`}
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-                  />
-                  <span className="ml-3 text-gray-600 dark:text-gray-400">Загружаем историю транзакций...</span>
+                    className="mb-4 opacity-50"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 0.5, y: 0 }}
+                  >
+                    <CampIcon type="social" size="lg" />
+                  </motion.div>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Нет транзакций
+                  </p>
                 </div>
               ) : (
-                <div className="px-2">
+                <>
                   <TransactionTable transactions={transactions} entityType={entityType} />
-                </div>
-              )}
-              
-              {/* Кнопка "Загрузить ещё" для пагинации */}
-              {nextBeforeSignature && !historyError && (
-                <div className="flex justify-center mt-6">
-                  <motion.button
-                    onClick={loadMoreTransactions}
-                    disabled={isLoadingMore}
-                    className={`px-6 py-3 rounded-xl border-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
-                      isTeam 
-                        ? "border-[#E63946] text-[#E63946] hover:bg-[#E63946] hover:text-white dark:border-[#E63946]/80 dark:text-[#E63946]" 
-                        : "border-[#6ABECD] text-[#6ABECD] hover:bg-[#6ABECD] hover:text-white dark:border-[#6ABECD]/50"
-                    }`}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {isLoadingMore ? "Загружается..." : "Загрузить ещё"}
-                  </motion.button>
-                </div>
+                  
+                  {/* Кнопка "Загрузить ещё" для пагинации */}
+                  {nextBeforeSignature && (
+                    <div className="flex justify-center mt-6">
+                      <motion.button
+                        onClick={loadMoreTransactions}
+                        disabled={historyLoading}
+                        className={`px-6 py-3 rounded-xl border-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
+                          isTeam 
+                            ? "border-[#E63946] text-[#E63946] hover:bg-[#E63946] hover:text-white dark:border-[#E63946]/80 dark:text-[#E63946]" 
+                            : "border-[#6ABECD] text-[#6ABECD] hover:bg-[#6ABECD] hover:text-white dark:border-[#6ABECD]/50"
+                        }`}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        {historyLoading ? "Загружается..." : "Загрузить ещё"}
+                      </motion.button>
+                    </div>
+                  )}
+                </>
               )}
             </motion.section>
           </div>

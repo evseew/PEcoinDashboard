@@ -168,7 +168,7 @@ export default function StartupsPage() {
           extraColumns={[
             { key: "ageDisplay", label: "Age" }
           ]}
-          showBalance={true}
+          showBalance={false}
           isLoading={isLoading}
         />
       </div>

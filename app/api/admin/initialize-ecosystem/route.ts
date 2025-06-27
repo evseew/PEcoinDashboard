@@ -3,9 +3,18 @@ import { dynamicEcosystemCache } from "@/lib/dynamic-ecosystem-cache"
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔄 Принудительная инициализация экосистемы через админ API...')
+    // ОТКЛЮЧЕНО для production - дублирует запросы балансов с PublicDashboard
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({
+        success: false,
+        message: 'Админ инициализация отключена для production окружения (предотвращение дублирования запросов)',
+        productionMode: true
+      })
+    }
+
+    console.log('🔄 Принудительная инициализация экосистемы через админ API... (development)')
     
-    // Принудительная инициализация
+    // Принудительная инициализация (только для development)
     await dynamicEcosystemCache.autoInitialize()
     
     // Получаем статистику после инициализации
@@ -15,7 +24,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      message: 'Экосистема успешно инициализирована',
+      message: 'Экосистема успешно инициализирована (development mode)',
       stats
     })
 

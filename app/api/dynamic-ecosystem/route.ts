@@ -59,13 +59,22 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'initialize':
-        // Автоматическая инициализация экосистемы
+        // ОТКЛЮЧЕНО для production - дублирует запросы балансов с PublicDashboard
+        if (process.env.NODE_ENV === 'production') {
+          return NextResponse.json({ 
+            success: false, 
+            message: 'Ecosystem initialization disabled for production environment to prevent duplicate balance requests',
+            productionMode: true
+          })
+        }
+        
+        // Автоматическая инициализация экосистемы (только для development)
         await dynamicEcosystemCache.autoInitialize()
         const initStats = dynamicEcosystemCache.getEcosystemStats()
         
         return NextResponse.json({ 
           success: true, 
-          message: 'Dynamic ecosystem initialized',
+          message: 'Dynamic ecosystem initialized (development mode)',
           stats: initStats
         })
 
