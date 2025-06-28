@@ -16,9 +16,14 @@ interface EntityListProps {
   compact?: boolean
   balances?: Record<string, number> // Объект с балансами для каждого кошелька
   balancesLoading?: boolean
+  nftCounts?: Record<string, any>
+  nftLoading?: boolean
+  getNFTCount?: (walletAddress: string) => number
+  // ✅ ОПЦИОНАЛЬНО: Функция получения полных NFT данных (используется только при переходе на детальную страницу)
+  getNFTsForWallet?: (walletAddress: string) => any[]
 }
 
-export function EntityList({ title, entities, type, currentSort, onSort, icon, compact = false, balances, balancesLoading }: EntityListProps) {
+export function EntityList({ title, entities, type, currentSort, onSort, icon, compact = false, balances, balancesLoading, nftCounts, nftLoading, getNFTCount, getNFTsForWallet }: EntityListProps) {
   const handleSort = (sortBy: string) => {
     onSort(sortBy)
   }
@@ -44,6 +49,14 @@ export function EntityList({ title, entities, type, currentSort, onSort, icon, c
   const pecoinMint = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
   const pecoinImg = useTokenImageUrl(pecoinMint, "/images/pecoin.png")
   const alchemyApiKey = "VYK2v9vubZLxKwE9-ASUeQC6b1-zaVb1"
+
+  // ✅ УПРОЩЕНО: Убираем лишние переменные
+  const entityType = type === "teams" ? "teams" : "startups"
+
+  // ✅ БЕЗОПАСНАЯ функция получения NFT количества
+  const safeGetNFTCount = (walletAddress: string): number => {
+    return getNFTCount?.(walletAddress) || 0
+  }
 
   return (
     <div className={`camp-card ${borderColor} p-4 h-full`}>
@@ -115,16 +128,11 @@ export function EntityList({ title, entities, type, currentSort, onSort, icon, c
             <EntityListItem
               key={entity.id}
               entity={entity}
+              entityType={entityType}
+              balance={balances?.[entity.wallet_address] || 0}
               index={index}
-              pecoinMint={pecoinMint}
-              pecoinImg={pecoinImg}
-              alchemyApiKey={alchemyApiKey}
-              isTeam={isTeam}
-              iconBg={iconBg}
-              hoverBorder={hoverBorder}
-              type={type}
-              balance={balances?.[entity.wallet_address]}
-              balanceLoading={balancesLoading}
+              getNFTCount={safeGetNFTCount}
+              getNFTsForWallet={getNFTsForWallet}
             />
           ))}
         </div>

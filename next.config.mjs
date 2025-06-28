@@ -38,6 +38,27 @@ const nextConfig = {
           message: /Critical dependency: the request of a dependency is an expression/,
         }
       ]
+    } else {
+      // ✅ ИСПРАВЛЕНИЕ ChunkLoadError: Оптимизации для клиентского бандла
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+      }
+      
+      // ✅ ИСПРАВЛЕНО: Проверяем что splitChunks существует
+      if (config.optimization && config.optimization.splitChunks && typeof config.optimization.splitChunks === 'object') {
+        config.optimization.splitChunks.cacheGroups = {
+          ...config.optimization.splitChunks.cacheGroups,
+          solana: {
+            test: /[\\/]node_modules[\\/]@solana[\\/]/,
+            name: 'solana',
+            chunks: 'all',
+            priority: 20,
+          },
+        }
+      }
     }
     return config
   },

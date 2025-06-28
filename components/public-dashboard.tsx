@@ -1,25 +1,33 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { EntityList } from "@/components/entity-list"
 import { LoadingOverlay } from "@/components/loading-overlay"
 import { ErrorOverlay } from "@/components/error-overlay"
 import { useMobile } from "@/hooks/use-mobile"
+import { useDashboardBalances } from "@/hooks/use-dashboard-balances"
+import { useBatchNFTCollections } from "@/hooks/use-nft-collections"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { CampIcon } from "@/components/camp-icons"
 import { AnimatedBackground } from "@/components/animated-background"
 import { motion } from "framer-motion"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Users, Rocket, Home } from "lucide-react"
+import { Users, Rocket, Home, Trophy } from "lucide-react"
 import Link from "next/link"
 import { UserCog } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
 import { signedUrlCache } from "@/lib/signed-url-cache"
 
-
 // Получение signedUrl для логотипа с кэшированием
 async function getSignedUrl(storageKey: string | null): Promise<string | null> {
   return signedUrlCache.getSignedUrl(storageKey)
+}
+
+// ✅ УПРОЩЕНО: Локальное кэширование только для команд/стартапов
+const localCache = {
+  teams: null as any[] | null,
+  startups: null as any[] | null,
+  timestamp: 0
 }
 
 export function PublicDashboard() {
@@ -31,158 +39,130 @@ export function PublicDashboard() {
   const [startupSort, setStartupSort] = useState<string>("age")
   const [activeTab, setActiveTab] = useState<string>("all")
   const isMobile = useMobile()
-  const [totalTeamCoins, setTotalTeamCoins] = useState<number | null>(null)
-  const [totalStartupCoins, setTotalStartupCoins] = useState<number | null>(null)
-  const [totalCoins, setTotalCoins] = useState<number | null>(null)
-  const [balances, setBalances] = useState<Record<string, number>>({})
-  const [balancesLoading, setBalancesLoading] = useState(false)
-
 
   const pecoinMint = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
   const pecoinImg = "/images/pecoin.png"
 
+  // ✅ НОВЫЙ ПОДХОД: Используем специализированный хук для балансов
+  const {
+    balances,
+    totalTeamCoins,
+    totalStartupCoins,
+    totalCoins,
+    isLoading: balancesLoading,
+    isStale: balancesStale,
+    error: balancesError,
+    refresh: refreshBalances
+  } = useDashboardBalances({
+    teams,
+    startups,
+    pecoinMint,
+    autoRefreshInterval: 5 * 60 * 1000 // Автообновление каждые 5 минут
+  })
+
+  // ✅ БАТЧ-ЗАГРУЗКА NFT для всех кошельков сразу (мемоизировано для предотвращения зацикливания)
+  const allWallets = useMemo(() => [...new Set([
+    ...teams.filter(team => team.wallet_address).map(team => team.wallet_address),
+    ...startups.filter(startup => startup.wallet_address).map(startup => startup.wallet_address)
+  ])], [teams, startups])
+
+  const {
+    batchResults: nftResults,
+    isLoading: nftLoading,
+    error: nftError,
+    getNFTCountForWallet,
+    totalNFTs,
+    refetch: refreshNFTs
+  } = useBatchNFTCollections(allWallets)
+
+  // ✅ УПРОЩЕНО: Загрузка только команд и стартапов
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchTeamsAndStartups = async () => {
       const startTime = Date.now()
-      console.log(`[PublicDashboard] Начинаю загрузку данных...`)
+      console.log(`[PublicDashboard] 🚀 Загружаю команды и стартапы...`)
       
       setLoading(true)
       setError(null)
+      
+      // ✅ Показываем кэшированные данные сразу (optimistic UI)
+      if (localCache.teams && localCache.startups && (Date.now() - localCache.timestamp) < 60000) {
+        console.log(`[PublicDashboard] 💾 Показываем кэшированные команды/стартапы (возраст: ${Math.round((Date.now() - localCache.timestamp) / 1000)}s)`)
+        setTeams(localCache.teams)
+        setStartups(localCache.startups)
+        setLoading(false)
+      }
+      
       try {
-        console.log(`[PublicDashboard] Загружаю команды и стартапы из Supabase...`)
-        const supabaseStart = Date.now()
+        console.log(`[PublicDashboard] 📊 Параллельная загрузка команд и стартапов...`)
         
-        const { data: teams, error: teamsError } = await supabase.from("teams").select("*")
-        const { data: startups, error: startupsError } = await supabase.from("startups").select("*")
+        // ✅ Параллельные запросы для команд и стартапов
+        const [teamsResult, startupsResult] = await Promise.all([
+          supabase.from("teams").select("*"),
+          supabase.from("startups").select("*")
+        ])
         
-        console.log(`[PublicDashboard] Supabase запрос выполнен за ${Date.now() - supabaseStart}ms`)
+        const dataLoadTime = Date.now() - startTime
+        console.log(`[PublicDashboard] ⚡ Supabase данные получены за ${dataLoadTime}ms`)
         
-        if (teamsError || startupsError) {
-          console.error(`[PublicDashboard] Ошибка Supabase:`, { teamsError, startupsError })
+        if (teamsResult.error || startupsResult.error) {
+          console.error(`[PublicDashboard] ❌ Ошибка Supabase:`, { 
+            teams: teamsResult.error, 
+            startups: startupsResult.error 
+          })
           setError("Ошибка загрузки данных")
-        } else {
-          console.log(`[PublicDashboard] Получено команд: ${teams?.length || 0}, стартапов: ${startups?.length || 0}`)
-          
-          // Получаем signed URLs для корректного отображения изображений
-          const signedUrlStart = Date.now()
-          
-          const teamsWithLogo = await Promise.all(
-            (teams || []).map(async (team) => ({
-              ...team,
-              logo: await getSignedUrl(team.logo_url), // Получаем signed URL с кэшированием
-            }))
-          )
-          
-          const startupsWithLogo = await Promise.all(
-            (startups || []).map(async (startup) => ({
-              ...startup,
-              logo: await getSignedUrl(startup.logo_url), // Получаем signed URL с кэшированием
-            }))
-          )
-          
-          console.log(`[PublicDashboard] Signed URLs получены за ${Date.now() - signedUrlStart}ms`)
-          
-          // Сортируем команды по возрасту от младших к старшим по умолчанию
-          const sortedTeams = teamsWithLogo.sort((a, b) => {
-            const ageA = a.age_range_min || 999
-            const ageB = b.age_range_min || 999
-            return ageA - ageB
-          })
-          
-          // Сортируем стартапы по возрасту от младших к старшим по умолчанию
-          const sortedStartups = startupsWithLogo.sort((a, b) => {
-            const ageA = a.age_range_min || 999 // Стартапы без возраста идут в конец
-            const ageB = b.age_range_min || 999
-            return ageA - ageB
-          })
-          
-          setTeams(sortedTeams)
-          setStartups(sortedStartups)
-          
-          console.log(`[PublicDashboard] Данные загружены за ${Date.now() - startTime}ms`)
+          return
         }
+
+        // Получаем signed URLs параллельно
+        const signedUrlStart = Date.now()
+        const [teamsWithLogo, startupsWithLogo] = await Promise.all([
+          Promise.all((teamsResult.data || []).map(async (team) => ({
+            ...team,
+            logo: await getSignedUrl(team.logo_url),
+          }))),
+          Promise.all((startupsResult.data || []).map(async (startup) => ({
+            ...startup,
+            logo: await getSignedUrl(startup.logo_url),
+          })))
+        ])
+        
+        console.log(`[PublicDashboard] 🖼️ Signed URLs получены за ${Date.now() - signedUrlStart}ms`)
+        
+        // Сортируем по возрасту
+        const sortedTeams = teamsWithLogo.sort((a, b) => {
+          const ageA = a.age_range_min || 999
+          const ageB = b.age_range_min || 999
+          return ageA - ageB
+        })
+        
+        const sortedStartups = startupsWithLogo.sort((a, b) => {
+          const ageA = a.age_range_min || 999
+          const ageB = b.age_range_min || 999
+          return ageA - ageB
+        })
+        
+        // ✅ Обновляем состояние
+        setTeams(sortedTeams)
+        setStartups(sortedStartups)
+        
+        // ✅ Сохраняем в локальный кэш
+        localCache.teams = sortedTeams
+        localCache.startups = sortedStartups
+        localCache.timestamp = Date.now()
+        
+        const totalTime = Date.now() - startTime
+        console.log(`[PublicDashboard] 🎉 Команды и стартапы загружены за ${totalTime}ms (команды: ${sortedTeams.length}, стартапы: ${sortedStartups.length})`)
+        
       } catch (err) {
-        console.error(`[PublicDashboard] Критическая ошибка:`, err)
+        console.error(`[PublicDashboard] ❌ Критическая ошибка:`, err)
         setError("Failed to load dashboard data")
       } finally {
         setLoading(false)
-        console.log(`[PublicDashboard] Общее время загрузки: ${Date.now() - startTime}ms`)
-      }
-    }
-    fetchData()
-  }, [])
-
-  // Простая групповая загрузка балансов для всех участников  
-  useEffect(() => {
-    const fetchAllBalances = async () => {
-      if (teams.length === 0 && startups.length === 0) return
-      
-      console.log('[PublicDashboard] Загружаю балансы для всех участников...')
-      setBalancesLoading(true)
-      
-      try {
-        // Собираем все уникальные адреса кошельков
-        const teamWallets = teams.filter(team => team.wallet_address).map(team => team.wallet_address)
-        const startupWallets = startups.filter(startup => startup.wallet_address).map(startup => startup.wallet_address)
-        const allWallets = [...new Set([...teamWallets, ...startupWallets])]
-        
-        if (allWallets.length === 0) {
-          console.log('[PublicDashboard] Нет кошельков для загрузки балансов')
-          setBalancesLoading(false)
-          return
-        }
-        
-        // ОДИН запрос для всех балансов
-        const response = await fetch('/api/token-balances', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            wallets: allWallets,
-            mint: pecoinMint 
-          }),
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          setBalances(data.balances || {})
-          
-          // Подсчитываем суммы
-          let teamSum = 0
-          let startupSum = 0
-          
-          teams.forEach(team => {
-            const balance = data.balances[team.wallet_address] || 0
-            teamSum += balance
-          })
-          
-          startups.forEach(startup => {
-            const balance = data.balances[startup.wallet_address] || 0
-            startupSum += balance
-          })
-          
-          setTotalTeamCoins(teamSum)
-          setTotalStartupCoins(startupSum)
-          setTotalCoins(teamSum + startupSum)
-          
-          console.log(`[PublicDashboard] Балансы загружены: ${allWallets.length} кошельков, ${teamSum + startupSum} PEcoin`)
-        } else {
-          console.error('[PublicDashboard] Ошибка загрузки балансов:', response.status)
-          setTotalTeamCoins(0)
-          setTotalStartupCoins(0)  
-          setTotalCoins(0)
-        }
-      } catch (error) {
-        console.error('[PublicDashboard] Ошибка получения балансов:', error)
-        setTotalTeamCoins(0)
-        setTotalStartupCoins(0)
-        setTotalCoins(0)
-      } finally {
-        setBalancesLoading(false)
       }
     }
     
-    fetchAllBalances()
-  }, [teams, startups, pecoinMint])
+    fetchTeamsAndStartups()
+  }, []) // ✅ Загружаем только команды/стартапы, балансы управляются отдельным хуком
 
   const handleTeamSort = (sortBy: string) => {
     setTeamSort(sortBy)
@@ -295,16 +275,25 @@ export function PublicDashboard() {
                     <div className="absolute -inset-1 bg-gradient-to-r from-[#FFD166] to-[#FF6B6B] rounded-full blur opacity-75"></div>
                     <div className="relative w-7 h-7 bg-white dark:bg-gray-800 rounded-full p-1">
                       <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full" />
+                      {/* ✅ Индикатор загрузки/обновления */}
+                      {(balancesLoading || balancesStale) && (
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                      )}
                     </div>
                   </div>
                   <div>
                     <div className="flex items-baseline gap-1">
                       <span className="font-bold text-base text-gray-900 dark:text-white">
-                        {totalCoins !== null ? totalCoins.toLocaleString() : "..."}
+                        {totalCoins.toLocaleString()}
                       </span>
                       <span className="text-xs font-medium text-gray-500 dark:text-gray-400">PEcoins</span>
+                      {balancesStale && (
+                        <span className="text-xs text-blue-500" title="Обновляется в фоне">↻</span>
+                      )}
                     </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">in circulation</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {balancesError ? "Ошибка загрузки" : "in circulation"}
+                    </span>
                   </div>
                 </motion.div>
               </div>
@@ -401,21 +390,32 @@ export function PublicDashboard() {
                  initial={{ opacity: 0, x: -20 }}
                  animate={{ opacity: 1, x: 0 }}
                  transition={{ duration: 0.8, delay: 0.5 }}
+                 onClick={refreshBalances}
+                 title="Нажмите для обновления балансов"
                >
                  <div className="relative mr-1 flex-shrink-0">
                    <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FFD166] to-[#FF6B6B] rounded-full blur opacity-75"></div>
                    <div className="relative w-5 h-5 bg-white dark:bg-gray-800 rounded-full p-0">
                      <img src={pecoinImg} alt="PEcoin" className="w-full h-full object-cover rounded-full" />
+                     {/* ✅ Мобильный индикатор загрузки */}
+                     {(balancesLoading || balancesStale) && (
+                       <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                     )}
                    </div>
                  </div>
                  <div className="min-w-0">
                    <div className="flex items-baseline gap-1">
                      <span className="font-bold text-xs text-gray-900 dark:text-white truncate">
-                       {totalCoins !== null ? totalCoins.toLocaleString() : "..."}
+                       {totalCoins.toLocaleString()}
                      </span>
                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">PEcoin</span>
+                     {balancesStale && (
+                       <span className="text-xs text-blue-500">↻</span>
+                     )}
                    </div>
-                   <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">in circulation</span>
+                   <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                     {balancesError ? "Ошибка" : "in circulation"}
+                   </span>
                  </div>
                </motion.div>
 
@@ -538,11 +538,11 @@ export function PublicDashboard() {
           >
             <div className="flex items-center">
               <div className="p-2 bg-[#06D6A0]/30 dark:bg-[#06D6A0]/20 rounded-full mr-3">
-                <img src={pecoinImg} alt="PEcoin" className="h-4 w-4 object-cover rounded-full bg-transparent" />
+                <Trophy className="h-4 w-4 text-[#06D6A0]" />
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Startup PEcoins</p>
-                <p className="text-lg font-bold">{totalStartupCoins !== null ? totalStartupCoins.toLocaleString() : "..."}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Total NFTs</p>
+                <p className="text-lg font-bold">{nftLoading ? "..." : totalNFTs.toLocaleString()}</p>
               </div>
             </div>
           </motion.div>
@@ -586,6 +586,10 @@ export function PublicDashboard() {
                   compact={true}
                   balances={balances}
                   balancesLoading={balancesLoading}
+                  nftCounts={nftResults}
+                  nftLoading={nftLoading}
+                  getNFTCount={getNFTCountForWallet}
+
                 />
               </div>
             </motion.div>
@@ -609,6 +613,9 @@ export function PublicDashboard() {
                 compact={true}
                 balances={balances}
                 balancesLoading={balancesLoading}
+                nftCounts={nftResults}
+                nftLoading={nftLoading}
+                getNFTCount={getNFTCountForWallet}
               />
             </motion.div>
           )}

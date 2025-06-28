@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabaseClient'
+import { getCachedBatchNFTResults, cacheBatchNFTResults } from '@/lib/server-cache'
 
 // Временно используем обычный клиент (RLS отключен для nft_collections)
 // TODO: переключиться на createServerClient когда настроен SUPABASE_SERVICE_ROLE_KEY
@@ -278,12 +279,18 @@ export async function GET() {
   }
 }
 
-// POST - создание новой коллекции ИЛИ получение NFT для кошелька
+// POST - создание новой коллекции ИЛИ получение NFT для кошелька/кошельков
 export async function POST(request: NextRequest) {
   try {
     console.log('[API POST] Получен запрос')
     const requestData = await request.json()
     console.log('[API POST] Данные запроса:', requestData)
+
+    // ✅ НОВОЕ: Batch запрос NFT для множества кошельков
+    if (requestData.wallets && Array.isArray(requestData.wallets)) {
+      console.log('[API POST] 🚀 Обработка BATCH запроса NFT для кошельков:', requestData.wallets.length)
+      return await handleGetNFTsBatch(requestData.wallets)
+    }
 
     // Если запрос содержит walletAddress - возвращаем NFT этого кошелька
     if (requestData.walletAddress) {
@@ -537,5 +544,272 @@ export async function DELETE(request: NextRequest) {
       { success: false, error: error.message || 'Не удалось удалить коллекцию' },
       { status: 500 }
     )
+  }
+}
+
+// ✅ НОВАЯ ФУНКЦИЯ: Batch получение NFT для множества кошельков
+async function handleGetNFTsBatch(wallets: string[]): Promise<NextResponse> {
+  const startTime = Date.now()
+  
+  try {
+    console.log(`[handleGetNFTsBatch] 🚀 Batch получение NFT для ${wallets.length} кошельков`)
+
+    if (wallets.length === 0) {
+      return NextResponse.json({
+        success: true,
+        results: {},
+        timing: { total: 0, walletsCount: 0 }
+      })
+    }
+
+    // ✅ ПРОВЕРЯЕМ КЭШ: Может часть результатов уже есть
+    const { cached, missing } = getCachedBatchNFTResults(wallets)
+    
+    if (missing.length === 0) {
+      // Все результаты в кэше!
+      const totalTime = Date.now() - startTime
+      console.log(`[handleGetNFTsBatch] 🎯 Все ${wallets.length} NFT результатов из кэша за ${totalTime}ms`)
+      
+      return NextResponse.json({
+        success: true,
+        results: cached,
+        timing: { total: totalTime, walletsCount: wallets.length, fromCache: true }
+      })
+    }
+    
+    console.log(`[handleGetNFTsBatch] 💾 Из кэша: ${Object.keys(cached).length}, загружаем: ${missing.length}`)
+
+    // Валидация только отсутствующих в кэше адресов кошельков
+    const validWallets: string[] = []
+    const results: Record<string, any> = { ...cached } // Начинаем с кэшированных результатов
+
+    for (const wallet of missing) {
+      if (typeof wallet !== 'string' || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(wallet)) {
+        console.warn(`[handleGetNFTsBatch] ⚠️ Неверный формат адреса: ${wallet}`)
+        results[wallet] = { success: false, nfts: [], count: 0, error: 'Неверный формат адреса' }
+        continue
+      }
+      validWallets.push(wallet)
+    }
+
+    if (validWallets.length === 0) {
+      const totalTime = Date.now() - startTime
+      return NextResponse.json({
+        success: true,
+        results,
+        timing: { total: totalTime, walletsCount: 0 }
+      })
+    }
+
+    console.log(`[handleGetNFTsBatch] 📋 Валидных кошельков: ${validWallets.length}/${wallets.length}`)
+
+    // Проверяем доступность RPC endpoints
+    if (BACKUP_RPC_URLS.length === 0) {
+      console.log('[handleGetNFTsBatch] ⚠️ Нет доступных RPC endpoints')
+      validWallets.forEach(wallet => {
+        results[wallet] = { success: true, nfts: [], count: 0, warning: 'RPC endpoints не настроены' }
+      })
+      const totalTime = Date.now() - startTime
+      return NextResponse.json({
+        success: true,
+        results,
+        timing: { total: totalTime, walletsCount: validWallets.length }
+      })
+    }
+
+    // Выбираем первый рабочий RPC с поддержкой DAS API
+    let workingRpc: any = null
+    let rpcUsed = 'none'
+
+    for (const rpcUrl of BACKUP_RPC_URLS) {
+      try {
+        console.log(`[handleGetNFTsBatch] 🔍 Проверяем RPC: ${rpcUrl}`)
+        const rpc = createRpcInstance(rpcUrl)
+        
+        // Проверяем поддержку DAS API
+        await rpc.dasRequest('getAssetsByOwner', {
+          ownerAddress: "11111111111111111111111111111112",
+          limit: 1
+        })
+        
+        console.log(`[handleGetNFTsBatch] ✅ RPC поддерживает DAS API: ${rpcUrl}`)
+        workingRpc = rpc
+        rpcUsed = rpcUrl
+        break
+      } catch (error) {
+        console.log(`[handleGetNFTsBatch] ❌ RPC не поддерживает DAS API: ${rpcUrl}`)
+        continue
+      }
+    }
+
+    if (!workingRpc) {
+      console.log('[handleGetNFTsBatch] ⚠️ Ни один RPC не поддерживает DAS API')
+      validWallets.forEach(wallet => {
+        results[wallet] = { success: true, nfts: [], count: 0, warning: 'DAS API недоступен' }
+      })
+      const totalTime = Date.now() - startTime
+      return NextResponse.json({
+        success: true,
+        results,
+        timing: { total: totalTime, walletsCount: validWallets.length }
+      })
+    }
+
+    // ✅ BATCH обработка: параллельные запросы с контролем concurrency
+    const BATCH_SIZE = 3 // Консервативный размер для NFT запросов (они тяжелее counts)
+    const batches: string[][] = []
+    
+    for (let i = 0; i < validWallets.length; i += BATCH_SIZE) {
+      batches.push(validWallets.slice(i, i + BATCH_SIZE))
+    }
+
+    console.log(`[handleGetNFTsBatch] 📦 Разбито на ${batches.length} батчей по ≤${BATCH_SIZE} кошельков`)
+
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex]
+      const batchStart = Date.now()
+
+      console.log(`[handleGetNFTsBatch] ⚡ Обработка батча ${batchIndex + 1}/${batches.length} (${batch.length} кошельков)`)
+
+      // Параллельные запросы для текущего батча
+      const batchPromises = batch.map(async (wallet) => {
+        try {
+          const allNFTs: any[] = []
+          let page = 1
+          let hasMore = true
+          
+          // Получаем все NFT для кошелька (до 5 страниц)
+          while (hasMore && page <= 5) {
+            const response = await workingRpc.dasRequest('getAssetsByOwner', {
+              ownerAddress: wallet,
+              page: page,
+              limit: 50
+            })
+            
+            const assets = response?.items || []
+            
+            for (const asset of assets) {
+              const nft = {
+                id: asset.id,
+                mintAddress: asset.id,
+                name: asset.content?.metadata?.name || 'Без названия',
+                description: asset.content?.metadata?.description || 'Без описания',
+                image: asset.content?.links?.image || asset.content?.metadata?.image || null,
+                collection: getCollectionName(asset),
+                symbol: asset.content?.metadata?.symbol || 'NFT',
+                uri: asset.content?.json_uri || null,
+                attributes: asset.content?.metadata?.attributes || [],
+                isCompressed: asset.compression?.compressed === true,
+                treeId: asset.compression?.tree || null
+              }
+              
+              allNFTs.push(nft)
+            }
+            
+            hasMore = assets.length === 50 && response?.total > page * 50
+            page++
+          }
+          
+          console.log(`[handleGetNFTsBatch] 📊 ${wallet.slice(0,8)}... = ${allNFTs.length} NFTs`)
+          return { 
+            wallet, 
+            result: { 
+              success: true, 
+              nfts: allNFTs, 
+              count: allNFTs.length,
+              meta: { rpcUsed, supportsDAS: true, walletAddress: wallet }
+            }
+          }
+        } catch (error) {
+          console.warn(`[handleGetNFTsBatch] ⚠️ Ошибка для ${wallet.slice(0,8)}...:`, error)
+          return { 
+            wallet, 
+            result: { 
+              success: false, 
+              nfts: [], 
+              count: 0, 
+              error: error instanceof Error ? error.message : 'Неизвестная ошибка'
+            }
+          }
+        }
+      })
+
+      // Выполняем параллельные запросы с timeout
+      const batchResults = await Promise.allSettled(
+        batchPromises.map(p => Promise.race([
+          p,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 12000))
+        ]))
+      )
+
+      // Обрабатываем результаты батча
+      batchResults.forEach((result, index) => {
+        const wallet = batch[index]
+        if (result.status === 'fulfilled') {
+          const { result: nftResult } = result.value as { wallet: string, result: any }
+          results[wallet] = nftResult
+        } else {
+          console.warn(`[handleGetNFTsBatch] ⚠️ Неудачный запрос для ${wallet.slice(0,8)}...`)
+          results[wallet] = { success: false, nfts: [], count: 0, error: 'Timeout или сетевая ошибка' }
+        }
+      })
+
+      const batchTime = Date.now() - batchStart
+      console.log(`[handleGetNFTsBatch] ✅ Батч ${batchIndex + 1}/${batches.length} обработан за ${batchTime}ms`)
+
+      // Пауза между батчами для снижения нагрузки на RPC
+      if (batchIndex < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+    }
+
+    const totalTime = Date.now() - startTime
+    const successCount = Object.values(results).filter((r: any) => r.success).length
+    console.log(`[handleGetNFTsBatch] 🎉 ЗАВЕРШЕНО: ${successCount}/${Object.keys(results).length} NFT коллекций за ${totalTime}ms`)
+
+    // ✅ КЭШИРУЕМ РЕЗУЛЬТАТЫ для будущих запросов
+    try {
+      // Кэшируем только новые результаты (не кэшированные ранее)
+      const newResults: Record<string, any> = {}
+      for (const wallet of validWallets) {
+        if (results[wallet]) {
+          newResults[wallet] = results[wallet]
+        }
+      }
+      
+      if (Object.keys(newResults).length > 0) {
+        cacheBatchNFTResults(validWallets, newResults)
+      }
+    } catch (cacheError) {
+      console.warn(`[handleGetNFTsBatch] ⚠️ Ошибка кэширования результатов:`, cacheError)
+      // Не критично - продолжаем работу без кэширования
+    }
+
+    return NextResponse.json({
+      success: true,
+      results,
+      timing: { 
+        total: totalTime, 
+        walletsCount: validWallets.length,
+        successCount,
+        averagePerWallet: validWallets.length > 0 ? Math.round(totalTime / validWallets.length * 100) / 100 : 0,
+        cacheHits: Object.keys(cached).length
+      },
+      meta: {
+        rpcUsed,
+        supportsDAS: true
+      }
+    })
+
+  } catch (error: any) {
+    const totalTime = Date.now() - startTime
+    console.error(`[handleGetNFTsBatch] ❌ Критическая ошибка за ${totalTime}ms:`, error)
+    
+    return NextResponse.json({
+      success: false,
+      error: 'Не удалось получить NFT коллекции',
+      results: {},
+      timing: { total: totalTime, walletsCount: 0 }
+    }, { status: 500 })
   }
 } 

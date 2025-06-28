@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabaseClient"
-import { dynamicEcosystemCache } from "@/lib/dynamic-ecosystem-cache"
 
 interface ActivityItem {
   id: string
@@ -47,73 +46,54 @@ export async function GET(request: NextRequest) {
     try {
       const balanceStartTime = Date.now()
       
-      // Сначала пробуем получить из кэша
-      const ecosystemStats = dynamicEcosystemCache.getEcosystemStats()
+      // ✅ УБРАНО: DynamicEcosystemCache больше не инициализируется, загружаем балансы напрямую
+      console.log('⚠️ Загружаем балансы напрямую без кэша')
       
-      if (ecosystemStats.totalBalance > 0 && ecosystemStats.cacheAge < 5 * 60 * 1000) {
-        // Кэш свежий (< 5 минут) - используем его
-        totalPEcoins = ecosystemStats.totalBalance
-        console.log('✅ Использованы кэшированные балансы PEcoin')
-      } else {
-        // ОТКЛЮЧЕНО для production - дублирует запросы балансов
-        if (process.env.NODE_ENV !== 'production') {
-          // Кэш устарел - инициализируем асинхронно, но не блокируем ответ (только development)
-          console.log('🔄 Запуск фоновой загрузки балансов... (development)')
-          
-          // Запускаем инициализацию в фоне без await
-          dynamicEcosystemCache.autoInitialize().catch(error => {
-            console.error('❌ Фоновая инициализация кэша:', error)
-          })
-        } else {
-          console.log('⚠️ Фоновая инициализация отключена для production')
-        }
+      // Пытаемся получить балансы напрямую с ограничением по времени
+      try {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 3000) // максимум 3 секунды
+        )
         
-        // Пытаемся получить балансы напрямую с ограничением по времени
-        try {
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 3000) // максимум 3 секунды
-          )
+        const balancePromise = (async () => {
+          const [teamsWallets, startupsWallets, staffWallets] = await Promise.all([
+            supabase.from("teams").select("wallet_address").not('wallet_address', 'is', null),
+            supabase.from("startups").select("wallet_address").not('wallet_address', 'is', null),
+            supabase.from("staff").select("wallet_address").not('wallet_address', 'is', null)
+          ])
           
-          const balancePromise = (async () => {
-            const [teamsWallets, startupsWallets, staffWallets] = await Promise.all([
-              supabase.from("teams").select("wallet_address").not('wallet_address', 'is', null),
-              supabase.from("startups").select("wallet_address").not('wallet_address', 'is', null),
-              supabase.from("staff").select("wallet_address").not('wallet_address', 'is', null)
-            ])
-            
-            const allWallets = [
-              ...(teamsWallets.data?.map(t => t.wallet_address) || []),
-              ...(startupsWallets.data?.map(s => s.wallet_address) || []),
-              ...(staffWallets.data?.map(st => st.wallet_address) || [])
-            ].filter(Boolean)
-            
-            if (allWallets.length > 0) {
-              const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '')
-              const balanceResponse = await fetch(`${baseUrl}/api/token-balances`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  wallets: allWallets,
-                  mint: "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
-                })
+          const allWallets = [
+            ...(teamsWallets.data?.map(t => t.wallet_address) || []),
+            ...(startupsWallets.data?.map(s => s.wallet_address) || []),
+            ...(staffWallets.data?.map(st => st.wallet_address) || [])
+          ].filter(Boolean)
+          
+          if (allWallets.length > 0) {
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '')
+            const balanceResponse = await fetch(`${baseUrl}/api/token-balances`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                wallets: allWallets,
+                mint: "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
               })
-              
-              if (balanceResponse.ok) {
-                const balanceData = await balanceResponse.json()
-                if (balanceData.balances) {
-                  return Object.values(balanceData.balances).reduce((sum: number, balance: any) => sum + (balance || 0), 0)
-                }
+            })
+            
+            if (balanceResponse.ok) {
+              const balanceData = await balanceResponse.json()
+              if (balanceData.balances) {
+                return Object.values(balanceData.balances).reduce((sum: number, balance: any) => sum + (balance || 0), 0)
               }
             }
-            return 0
-          })()
-          
-          totalPEcoins = await Promise.race([balancePromise, timeoutPromise]) as number
-          
-        } catch (error) {
-          console.warn('⚠️ Загрузка балансов заняла слишком много времени, используем кэшированное значение')
-          totalPEcoins = ecosystemStats.totalBalance || 0
-        }
+          }
+          return 0
+        })()
+        
+        totalPEcoins = await Promise.race([balancePromise, timeoutPromise]) as number
+        
+      } catch (error) {
+        console.warn('⚠️ Загрузка балансов заняла слишком много времени')
+        totalPEcoins = 0
       }
       
       balanceLoadingTime = Date.now() - balanceStartTime

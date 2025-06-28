@@ -465,22 +465,19 @@ export async function POST(request: Request) {
     }
     // console.log(`[API/POST] PEcoin token accounts for ${walletAddress}:`, userPecoinTokenAccounts);
 
-    // 2. Собираем подписи транзакций для всех PEcoin-аккаунтов пользователя
-    // Можно также запрашивать getSignaturesForAddress для самого walletAddress,
-    // если переводы могут происходить без прямого участия токен-аккаунтов (например, создание ATA через CPI).
-    // Пока фокусируемся на истории токен-аккаунтов.
+    // 2. Получаем подписи транзакций прямо для основного кошелька 
+    // Это даст нам больше транзакций чем поиск только по токен-аккаунтам
     const signaturesSet = new Set<string>();
-    // const limitPerAccount = 25; // Лимит подписей на каждый токен-аккаунт (может быть параметром запроса)
-    // Используем requestedLimit как лимит для каждого аккаунта при запросе с пагинацией
-
+    
+    // Запрашиваем подписи для основного кошелька
+    const walletSigs = await getSignaturesForAddressWithLimit(walletAddress, requestedLimit * 3, beforeSignature);
+    walletSigs.forEach(s => signaturesSet.add(s));
+    
+    // Дополнительно добавляем подписи из токен-аккаунтов
     for (const tokenAccount of userPecoinTokenAccounts) {
       const sigs = await getSignaturesForAddressWithLimit(tokenAccount, requestedLimit, beforeSignature);
       sigs.forEach(s => signaturesSet.add(s));
     }
-    
-    // Дополнительно, можно запросить историю для самого walletAddress, чтобы покрыть случаи создания ATA и т.д.
-    // const walletSigs = await getSignaturesForAddressWithLimit(walletAddress, limitPerAccount);
-    // walletSigs.forEach(s => signaturesSet.add(s));
 
 
     const allUniqueSignatures = Array.from(signaturesSet);
@@ -505,9 +502,9 @@ export async function POST(request: Request) {
     // 6. Проверяем и обогащаем транзакции именами участников
     // Переиспользуем уже инициализированных участников
     
-    const enrichedTransactions = processedTransactions.map(tx => {
-      const senderInfo = walletNameResolver.getNameForWallet(tx.sender)
-      const receiverInfo = walletNameResolver.getNameForWallet(tx.receiver)
+    const enrichedTransactions = await Promise.all(processedTransactions.map(async tx => {
+      const senderInfo = await walletNameResolver.getNameForWallet(tx.sender)
+      const receiverInfo = await walletNameResolver.getNameForWallet(tx.receiver)
       
       return {
         ...tx,
@@ -516,7 +513,7 @@ export async function POST(request: Request) {
         senderInfo,
         receiverInfo
       }
-    })
+    }))
     
     // Ограничиваем количество возвращаемых транзакций, если нужно
     const finalTransactions = enrichedTransactions.slice(0, requestedLimit);

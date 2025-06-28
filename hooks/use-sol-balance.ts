@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '@/components/auth/auth-provider'
 
 // Адрес кошелька для минтинга NFT из переменных окружения
 const MINTING_WALLET_ADDRESS = process.env.NEXT_PUBLIC_MINTING_WALLET || '5JbDcHSKkPnptsGKS7oZjir2FuALJURf5p9fqAPt4Z6t'
@@ -10,6 +11,7 @@ interface SolBalanceState {
 }
 
 export function useSolBalance() {
+  const { isAdmin } = useAuth()
   const [state, setState] = useState<SolBalanceState>({
     balance: null,
     isLoading: true,
@@ -17,6 +19,16 @@ export function useSolBalance() {
   })
 
   const fetchBalance = async () => {
+    // ✅ ИСПРАВЛЕНО: Не загружаем баланс для неавторизованных пользователей
+    if (!isAdmin) {
+      setState({
+        balance: null,
+        isLoading: false,
+        error: 'Admin access required'
+      })
+      return
+    }
+
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }))
 
@@ -55,9 +67,18 @@ export function useSolBalance() {
   }
 
   useEffect(() => {
-    fetchBalance()
-    // Обновляется только при загрузке страницы или по кнопке
-  }, [])
+    // ✅ ИСПРАВЛЕНО: Загружаем баланс только для админов
+    if (isAdmin) {
+      fetchBalance()
+    } else {
+      setState({
+        balance: null,
+        isLoading: false,
+        error: null
+      })
+    }
+    // Добавляем isAdmin в зависимости, чтобы перезапустить эффект при изменении статуса
+  }, [isAdmin])
 
   return {
     ...state,

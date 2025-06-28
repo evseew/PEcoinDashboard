@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SolanaBalanceDisplay } from '@/components/solana-balance-display'
 import { useMintHistory } from '@/hooks/use-mint-history'
+import { useAuth } from '@/components/auth/auth-provider'
 
 import { Upload, History, Settings, Zap, Database, CheckCircle, RefreshCw, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react'
 
@@ -28,6 +29,8 @@ function truncateAddress(address: string) {
 }
 
 export default function NFTMintingPage() {
+  const { isAdmin } = useAuth()
+  
   // Загружаем реальные данные истории минтинга (авто-обновление встроено в хук)
   const { operations, statistics, loading, error, refresh, getRecentOperations } = useMintHistory({ 
     limit: 3
@@ -64,7 +67,7 @@ export default function NFTMintingPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <SolanaBalanceDisplay />
+              {isAdmin && <SolanaBalanceDisplay />}
             </div>
           </div>
         </div>

@@ -14,15 +14,15 @@ class ServerCache {
   private pendingRequests = new Map<string, Promise<any>>()
 
   // Время жизни для разных типов данных (в миллисекундах)
-  // ОПТИМИЗИРОВАНО для скорости загрузки
+  // ✅ ФИНАЛЬНО ОПТИМИЗИРОВАНО для лучшего баланса скорости и актуальности
   private readonly TTL_CONFIG = {
     NFT_COLLECTION: 10 * 60 * 1000,    // 10 минут - NFT меняются редко
-    TOKEN_BALANCE: 5 * 60 * 1000,      // 5 минут - балансы кешируем как было раньше
+    TOKEN_BALANCE: 2 * 60 * 1000,      // ✅ УМЕНЬШЕНО: 2 минуты для актуальности балансов
     NFT_METADATA: 30 * 60 * 1000,      // 30 минут - метаданные неизменны
-    WALLET_INFO: 5 * 60 * 1000,        // 5 минут - общая информация кошелька
-    TRANSACTION_HISTORY: 3 * 60 * 1000, // 3 минуты - история транзакций
+    WALLET_INFO: 3 * 60 * 1000,        // ✅ УМЕНЬШЕНО: 3 минуты - общая информация кошелька
+    TRANSACTION_HISTORY: 2 * 60 * 1000, // 2 минуты - история транзакций
     TRANSACTION_HISTORY_EMPTY: 60 * 1000, // 1 минута - пустая история
-    NFT_TRANSACTIONS: 2 * 60 * 1000,   // 2 минуты - NFT транзакции
+    NFT_TRANSACTIONS: 90 * 1000,       // ✅ УМЕНЬШЕНО: 90 секунд - NFT транзакции для свежести
   }
 
   /**
@@ -202,6 +202,73 @@ if (typeof setInterval !== 'undefined') {
   setInterval(() => {
     serverCache.cleanup()
   }, 5 * 60 * 1000)
+}
+
+/**
+ * ✅ НОВОЕ: Кэширование batch NFT результатов
+ */
+export function cacheBatchNFTResults(wallets: string[], results: Record<string, any>): void {
+  try {
+    // Кэшируем каждый результат отдельно для возможности частичного использования
+    Object.entries(results).forEach(([wallet, result]) => {
+      if (result.success && result.nfts) {
+        const cacheKey = `wallet:${wallet}`
+        
+        serverCache.set(cacheKey, result, 'NFT_COLLECTION')
+      }
+    })
+    
+    // Кэшируем также весь batch результат (используем специальный ключ)
+    const batchKey = `batch:${wallets.sort().join(',')}`
+    serverCache.set(batchKey, results, 'NFT_COLLECTION')
+    
+    console.log(`[ServerCache] 💾 Кэширован batch NFT результат для ${Object.keys(results).length} кошельков`)
+  } catch (error) {
+    console.error('[ServerCache] ❌ Ошибка кэширования batch NFT:', error)
+  }
+}
+
+/**
+ * ✅ НОВОЕ: Получение кэшированных NFT results для множества кошельков
+ */
+export function getCachedBatchNFTResults(wallets: string[]): {
+  cached: Record<string, any>,
+  missing: string[]
+} {
+  const cached: Record<string, any> = {}
+  const missing: string[] = []
+  
+  try {
+    // Сначала проверяем batch кэш
+    const batchKey = `batch:${wallets.sort().join(',')}`
+    const batchCached = serverCache.get(batchKey)
+    
+    if (batchCached && typeof batchCached === 'object') {
+      console.log(`[ServerCache] 🎯 Batch NFT cache HIT для ${wallets.length} кошельков`)
+      return { cached: batchCached, missing: [] }
+    }
+    
+    // Иначе проверяем индивидуальные кэши
+    for (const wallet of wallets) {
+      const cacheKey = `wallet:${wallet}`
+      const result = serverCache.get(cacheKey)
+      
+      if (result !== null) {
+        cached[wallet] = result
+      } else {
+        missing.push(wallet)
+      }
+    }
+    
+    if (Object.keys(cached).length > 0) {
+      console.log(`[ServerCache] 💾 Частичный NFT cache: ${Object.keys(cached).length} кэшированных, ${missing.length} нужно загрузить`)
+    }
+    
+    return { cached, missing }
+  } catch (error) {
+    console.error('[ServerCache] ❌ Ошибка получения кэшированных NFT:', error)
+    return { cached: {}, missing: wallets }
+  }
 }
 
 export { serverCache, ServerCache } 

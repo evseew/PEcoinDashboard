@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCachedTokenBalances } from '@/lib/cached-token-balance'
+import { getMultipleTokenBalances } from '@/lib/alchemy/solana'
 import { getAlchemyKey } from '@/lib/alchemy/solana'
+
+// ✅ УПРОЩЕННЫЙ 2-УРОВНЕВЫЙ КЭШИРОВАНИЕ: Простой in-memory кэш в API endpoint
+const balanceCache = new Map<string, { balance: number; timestamp: number }>()
+const BALANCE_CACHE_TTL = 2 * 60 * 1000 // 2 минуты
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
@@ -15,42 +19,73 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    console.log(`[Token Balances API] ⏱️ Запрос балансов для ${wallets.length} кошельков`)
-    console.log(`[Token Balances API] 🌍 Environment: ${process.env.NODE_ENV}`)
+    console.log(`[TokenBalances API] 🚀 УПРОЩЕННЫЙ запрос балансов для ${wallets.length} кошельков`)
     
-    const apiKeyStart = Date.now()
     const apiKey = getAlchemyKey()
-    console.log(`[Token Balances API] 🔑 API Key получен за ${Date.now() - apiKeyStart}ms`)
+    const now = Date.now()
     
-    const balancesStart = Date.now()
-    const balances = await getCachedTokenBalances(wallets, mint, apiKey)
-    const balancesTime = Date.now() - balancesStart
+    // ✅ Проверяем простой кэш
+    const cachedBalances = new Map<string, number>()
+    const walletsToFetch: string[] = []
     
-    console.log(`[Token Balances API] 💰 Балансы получены за ${balancesTime}ms`)
+    for (const wallet of wallets) {
+      const cacheKey = `${wallet}:${mint}`
+      const cached = balanceCache.get(cacheKey)
+      
+      if (cached && (now - cached.timestamp) < BALANCE_CACHE_TTL) {
+        cachedBalances.set(wallet, cached.balance)
+        console.log(`[TokenBalances] 💾 Кэш: ${wallet.slice(0,8)}... = ${cached.balance}`)
+      } else {
+        walletsToFetch.push(wallet)
+      }
+    }
     
-    // Конвертируем Map в объект для JSON
+    console.log(`[TokenBalances] 📊 Из кэша: ${cachedBalances.size}, загружаем: ${walletsToFetch.length}`)
+    
+    // ✅ Загружаем недостающие балансы НАПРЯМУЮ через Alchemy
+    let fetchedBalances = new Map<string, number>()
+    if (walletsToFetch.length > 0) {
+      const balancesStart = Date.now()
+      fetchedBalances = await getMultipleTokenBalances(walletsToFetch, mint, apiKey)
+      const balancesTime = Date.now() - balancesStart
+      
+      console.log(`[TokenBalances] ⚡ Загружено ${fetchedBalances.size} новых балансов за ${balancesTime}ms`)
+      
+      // ✅ Сохраняем в простой кэш
+      for (const [wallet, balance] of fetchedBalances) {
+        const cacheKey = `${wallet}:${mint}`
+        balanceCache.set(cacheKey, { balance, timestamp: now })
+      }
+    }
+    
+    // ✅ Объединяем результаты
+    const allBalances = new Map([...cachedBalances, ...fetchedBalances])
+    
+    // Конвертируем в объект для JSON
     const balancesObject: Record<string, number> = {}
-    balances.forEach((balance, wallet) => {
+    allBalances.forEach((balance, wallet) => {
       balancesObject[wallet] = balance
     })
     
     const totalTime = Date.now() - startTime
-    console.log(`[Token Balances API] ✅ Возвращено ${balances.size} балансов за ${totalTime}ms`)
+    console.log(`[TokenBalances] ✅ 2-УРОВНЕВЫЙ КЭШИ: ${allBalances.size} балансов за ${totalTime}ms`)
+    console.log(`[TokenBalances] 📈 Кэш: ${cachedBalances.size} + Загружено: ${fetchedBalances.size}`)
 
     return NextResponse.json({
       success: true,
       balances: balancesObject,
-      cached: true,
+      cached: cachedBalances.size > 0,
       timing: {
         total: totalTime,
-        balances: balancesTime,
-        walletsCount: wallets.length
+        walletsCount: wallets.length,
+        fromCache: cachedBalances.size,
+        fromAPI: fetchedBalances.size
       }
     })
     
   } catch (error) {
     const totalTime = Date.now() - startTime
-    console.error(`[Token Balances API] ❌ Error after ${totalTime}ms:`, error)
+    console.error(`[TokenBalances] ❌ Ошибка за ${totalTime}ms:`, error)
     return NextResponse.json(
       { 
         error: 'Failed to fetch token balances',

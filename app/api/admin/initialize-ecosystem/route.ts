@@ -1,31 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
-import { dynamicEcosystemCache } from "@/lib/dynamic-ecosystem-cache"
 
 export async function POST(request: NextRequest) {
   try {
-    // ОТКЛЮЧЕНО для production - дублирует запросы балансов с PublicDashboard
-    if (process.env.NODE_ENV === 'production') {
-      return NextResponse.json({
-        success: false,
-        message: 'Админ инициализация отключена для production окружения (предотвращение дублирования запросов)',
-        productionMode: true
-      })
-    }
-
-    console.log('🔄 Принудительная инициализация экосистемы через админ API... (development)')
-    
-    // Принудительная инициализация (только для development)
-    await dynamicEcosystemCache.autoInitialize()
-    
-    // Получаем статистику после инициализации
-    const stats = dynamicEcosystemCache.getEcosystemStats()
-    
-    console.log('✅ Экосистема инициализирована:', stats)
-    
+    // ✅ ОТКЛЮЧЕНО во всех средах для предотвращения дублирования запросов с PublicDashboard
     return NextResponse.json({
-      success: true,
-      message: 'Экосистема успешно инициализирована (development mode)',
-      stats
+      success: false,
+      message: 'Админ инициализация отключена для предотвращения дублирования запросов с PublicDashboard',
+      disabled: true,
+      recommendation: 'Используйте PublicDashboard и AdminDashboard для загрузки данных'
     })
 
   } catch (error) {

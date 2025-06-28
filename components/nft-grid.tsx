@@ -44,15 +44,6 @@ export function NftGrid({ nfts }: NftGridProps) {
           whileHover={{ scale: 1.08, y: -5 }}
         >
           <div className="aspect-square w-full relative overflow-hidden rounded-lg mb-3 shadow-lg bg-gray-100 dark:bg-gray-800">
-            {/* Индикатор compressed NFT */}
-            {nft.isCompressed && (
-              <div className="absolute top-2 left-2 z-10">
-                <div className="bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs px-2 py-1 rounded-full font-bold shadow-lg">
-                  cNFT
-                </div>
-              </div>
-            )}
-            
             {nft.image && nft.image !== 'Нет изображения' ? (
               <img
                 src={getProxiedImageUrl(nft.image)}
@@ -77,27 +68,6 @@ export function NftGrid({ nfts }: NftGridProps) {
                 {nft.isCompressed ? '🗜️' : '🖼️'}
               </div>
             )}
-            
-            {/* Оверлей с дополнительной информацией */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
-              <div className="text-white text-xs space-y-1">
-                {nft.isCompressed && (
-                  <div className="truncate">💾 Compressed NFT</div>
-                )}
-                {nft.collection && nft.collection !== 'Неизвестная коллекция' && nft.collection !== 'Compressed Collection' && (
-                  <div className="truncate">📁 {nft.collection}</div>
-                )}
-                {nft.symbol && (
-                  <div className="truncate">🏷️ {nft.symbol}</div>
-                )}
-                {nft.attributes && nft.attributes.length > 0 && (
-                  <div className="truncate">✨ {nft.attributes.length} атрибут{nft.attributes.length > 1 ? 'ов' : ''}</div>
-                )}
-                {nft.isCompressed && nft.treeId && (
-                  <div className="truncate text-purple-300">🌳 Tree: {nft.treeId.substring(0, 8)}...</div>
-                )}
-              </div>
-            </div>
           </div>
           
           <div className="w-full text-center px-2">
@@ -107,12 +77,6 @@ export function NftGrid({ nfts }: NftGridProps) {
             {nft.description && nft.description !== 'Без описания' && (
               <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2" title={nft.description}>
                 {nft.description}
-              </p>
-            )}
-            {/* Показываем тип NFT в подписи */}
-            {nft.isCompressed && (
-              <p className="text-xs text-purple-500 dark:text-purple-400 mt-1">
-                Compressed NFT
               </p>
             )}
           </div>

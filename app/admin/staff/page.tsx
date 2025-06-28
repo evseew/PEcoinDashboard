@@ -13,13 +13,21 @@ interface Staff {
   logo?: string | null
   description?: string
   balance?: number
+  nftCount?: number
   [key: string]: unknown
 }
 
 export default function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [balancesLoading, setBalancesLoading] = useState(false)
+  const [nftCountsLoading, setNftCountsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [balances, setBalances] = useState<Record<string, number>>({})
+  const [nftCounts, setNftCounts] = useState<Record<string, number>>({})
+
+  // PEcoin mint address
+  const pecoinMint = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
 
   const fetchStaff = async () => {
     setIsLoading(true)
@@ -38,9 +46,105 @@ export default function StaffPage() {
     setIsLoading(false)
   }
 
+  // ✅ BATCH-загрузка балансов всех участников состава одним запросом
+  const fetchAllBalances = async (staffList: Staff[]) => {
+    if (staffList.length === 0) return
+
+    console.log('[Staff Page] ⚡ Загружаю балансы для всех участников состава...')
+    setBalancesLoading(true)
+    
+    try {
+      // Собираем все уникальные адреса кошельков
+      const wallets = staffList
+        .filter(person => person.walletAddress)
+        .map(person => person.walletAddress)
+      
+      if (wallets.length === 0) {
+        setBalancesLoading(false)
+        return
+      }
+      
+      // ОДИН запрос для всех балансов
+      const response = await fetch('/api/token-balances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          wallets,
+          mint: pecoinMint 
+        }),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setBalances(data.balances || {})
+        console.log(`[Staff Page] ✅ Загружено ${Object.keys(data.balances || {}).length} балансов`)
+      } else {
+        console.error('[Staff Page] ❌ Ошибка загрузки балансов:', response.status)
+      }
+    } catch (error) {
+      console.error('[Staff Page] ❌ Ошибка получения балансов:', error)
+    } finally {
+      setBalancesLoading(false)
+    }
+  }
+
+  // ✅ НОВАЯ ФУНКЦИЯ: BATCH-загрузка NFT counts всех участников состава одним запросом
+  const fetchAllNFTCounts = async (staffList: Staff[]) => {
+    if (staffList.length === 0) return
+
+    console.log('[Staff Page] 🖼️ Загружаю NFT counts для всех участников состава...')
+    setNftCountsLoading(true)
+    
+    try {
+      // Собираем все уникальные адреса кошельков
+      const wallets = staffList
+        .filter(person => person.walletAddress)
+        .map(person => person.walletAddress)
+      
+      if (wallets.length === 0) {
+        setNftCountsLoading(false)
+        return
+      }
+      
+      // ✅ ИСПОЛЬЗУЕМ НОВЫЙ BATCH ENDPOINT
+      const response = await fetch('/api/nft-collection/batch-counts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          wallets  // Используем новый batch API
+        }),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setNftCounts(data.counts || {})
+        console.log(`[Staff Page] ✅ Загружено ${Object.keys(data.counts || {}).length} NFT counts за ${data.timing?.total || 0}ms`)
+      } else {
+        console.error('[Staff Page] ❌ Ошибка загрузки NFT counts:', response.status)
+        const errorText = await response.text()
+        console.error('[Staff Page] ❌ Детали ошибки:', errorText)
+      }
+    } catch (error) {
+      console.error('[Staff Page] ❌ Ошибка получения NFT counts:', error)
+    } finally {
+      setNftCountsLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchStaff()
   }, [])
+
+  // Загружаем балансы и NFT counts после загрузки участников состава
+  useEffect(() => {
+    if (staff.length > 0) {
+      // ✅ PARALLEL: Загружаем балансы и NFT counts параллельно!
+      Promise.all([
+        fetchAllBalances(staff),
+        fetchAllNFTCounts(staff)
+      ])
+    }
+  }, [staff])
 
   const handleCreateStaff = async (data: any) => {
     try {
@@ -104,14 +208,38 @@ export default function StaffPage() {
     fetchStaff()
   }
 
+  // ✅ Обогащаем данные участников состава балансами И NFT counts
+  const enrichedStaff = staff.map(person => ({
+    ...person,
+    balance: balances[person.walletAddress] || 0,
+    nftCount: nftCounts[person.walletAddress] || 0  // ✅ Добавляем NFT count
+  }))
+
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-display font-bold">Manage Staff</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-display font-bold">Manage Staff</h1>
+          {/* ✅ Показываем загрузку для балансов И NFT counts */}
+          <div className="flex items-center space-x-4">
+            {balancesLoading && (
+              <div className="flex items-center text-sm text-gray-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500 mr-2"></div>
+                Loading balances...
+              </div>
+            )}
+            {nftCountsLoading && (
+              <div className="flex items-center text-sm text-gray-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-500 mr-2"></div>
+                Loading NFTs...
+              </div>
+            )}
+          </div>
+        </div>
         {error && <div className="text-red-500">{error}</div>}
         <EntityTable
           title="Staff Members"
-          entities={staff}
+          entities={enrichedStaff}
           entityType="staff"
           onCreateEntity={handleCreateStaff}
           onUpdateEntity={handleUpdateStaff}
@@ -126,7 +254,7 @@ export default function StaffPage() {
               label: "NFT",
             },
           ]}
-          showBalance={false}
+          showBalance={true}
           isLoading={isLoading}
         />
       </div>

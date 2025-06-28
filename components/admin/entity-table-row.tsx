@@ -1,8 +1,7 @@
 import { Edit, Trash2 } from "lucide-react"
-import { useSplTokenBalance } from "@/hooks/use-spl-token-balance"
-import { useNftCount } from "@/hooks/use-nft-count"
 import { useEffect, useState } from "react"
 import { signedUrlCache } from "@/lib/signed-url-cache"
+import { globalBalanceCache } from "@/hooks/use-dashboard-balances"
 import Image from "next/image"
 
 interface EntityTableRowProps {
@@ -11,6 +10,8 @@ interface EntityTableRowProps {
     name: string
     walletAddress: string
     logo?: string | null
+    balance?: number
+    nftCount?: number
     [key: string]: unknown
   }
   extraColumns: { key: string; label: string }[]
@@ -27,12 +28,17 @@ export function EntityTableRow({
   onDelete 
 }: EntityTableRowProps) {
   // Константы для PEcoin
-  const pecoinMint = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
   const pecoinImg = "/images/pecoin.png"
   
-  // Индивидуальная загрузка баланса для каждой строки
-  const { balance, loading: balanceLoading } = useSplTokenBalance(entity.walletAddress, pecoinMint)
-  const { nftCount, loading: nftLoading } = useNftCount(entity.walletAddress)
+  // ✅ ИСПРАВЛЕНО: Убрал дублирующие индивидуальные запросы useSplTokenBalance и useNftCount
+  // Используем только переданные данные и globalBalanceCache как fallback
+  const finalBalance = entity.balance !== undefined 
+    ? entity.balance 
+    : (globalBalanceCache.balances[entity.walletAddress] || 0)
+  
+  // ✅ Используем переданный NFT count или 0 (batch NFT данные должны передаваться из родительского компонента)
+  const finalNFTCount = entity.nftCount !== undefined ? entity.nftCount : 0
+  
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
 
   useEffect(() => {
@@ -81,11 +87,7 @@ export function EntityTableRow({
               />
             </div>
             <span className="text-sm">
-              {balanceLoading ? (
-                <div className="h-4 w-12 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
-              ) : (
-                (balance !== null ? balance.toLocaleString() : "0")
-              )}
+              {finalBalance.toLocaleString()}
             </span>
           </div>
         </td>
@@ -97,11 +99,7 @@ export function EntityTableRow({
               <div className="flex items-center">
                 <span className="text-purple-500 mr-1">🖼️</span>
                 <span>
-                  {nftLoading ? (
-                    <div className="h-4 w-8 bg-gray-200 dark:bg-gray-600 rounded animate-pulse"></div>
-                  ) : (
-                    (nftCount !== null ? nftCount : "0")
-                  )}
+                  {finalNFTCount}
                 </span>
               </div>
             )

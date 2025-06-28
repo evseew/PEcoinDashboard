@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCachedTokenBalances } from '@/lib/cached-token-balance'
+import { getMultipleTokenBalances } from '@/lib/alchemy/solana'
 import { getAlchemyKey } from '@/lib/alchemy/solana'
 import { supabase } from '@/lib/supabaseClient' // ИСПРАВЛЕНО: правильный импорт клиента Supabase
 import { serverCache } from '@/lib/server-cache' // ДОБАВЛЕНО: импорт для управления кэшем
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     const apiKey = getAlchemyKey()
     console.log(`[CRON] 🔑 API Key: ${apiKey ? 'CONFIGURED' : 'MISSING'}`)
     
-    const balances = await getCachedTokenBalances(wallets, PECOIN_MINT, apiKey) 
+    const balances = await getMultipleTokenBalances(wallets, PECOIN_MINT, apiKey) 
     
     const totalTime = Date.now() - startTime
     console.log(`[CRON] ✅ Фоновое обновление балансов завершено за ${totalTime}ms.`)

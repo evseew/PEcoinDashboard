@@ -1,8 +1,7 @@
 // Глобальное кэширование для замкнутой экосистемы PEcoin
 // Загружает и синхронизирует данные всех участников
 
-import { serverCache } from './server-cache'
-import { getCachedTokenBalances } from './cached-token-balance'
+// ✅ УБРАНО: getCachedTokenBalances и serverCache больше не используются в отключенном кэше
 
 interface EcosystemParticipant {
   walletAddress: string
@@ -32,156 +31,46 @@ class EcosystemCache {
   private refreshTimer?: NodeJS.Timeout
 
   /**
-   * Инициализация участников экосистемы
+   * Автоматическая инициализация экосистемы (ПОЛНОСТЬЮ ОТКЛЮЧЕНО)
    */
   async initializeEcosystem(participants: EcosystemParticipant[]): Promise<void> {
-    console.log(`🌐 Инициализация экосистемы: ${participants.length} участников`)
-    this.participants = participants
-    
-    // Первоначальная загрузка всех данных
-    await this.refreshAllData()
-    
-    // Запускаем периодическое обновление
-    this.startPeriodicRefresh()
-    
-    console.log(`✅ Экосистема инициализирована для ${participants.length} участников`)
+    // ✅ ПОЛНОСТЬЮ ОТКЛЮЧЕНО для предотвращения дублирования запросов с PublicDashboard
+    console.log('⚠️ GlobalEcosystemCache полностью отключен для предотвращения дублирования запросов')
+    console.log('💡 Данные загружаются через PublicDashboard и AdminDashboard')
+    return
   }
 
   /**
-   * Полное обновление данных всех участников
+   * Полное обновление данных всех участников (ОТКЛЮЧЕНО)
    */
   async refreshAllData(): Promise<void> {
-    const startTime = Date.now()
-    console.log(`🔄 Глобальное обновление данных экосистемы...`)
-    
-    try {
-      // 1. Загружаем балансы всех участников batch-запросом
-      await this.refreshAllBalances()
-      
-      // 2. Загружаем NFT для всех участников параллельно
-      await this.refreshAllNFTs()
-      
-      // 3. Загружаем последние транзакции для всех участников
-      await this.refreshAllTransactions()
-      
-      this.ecosystemData.lastUpdate = Date.now()
-      const totalTime = Date.now() - startTime
-      
-      console.log(`✅ Глобальное обновление завершено за ${totalTime}ms`)
-      console.log(`📊 Загружено: ${this.ecosystemData.balances.size} балансов, ${this.ecosystemData.nfts.size} NFT коллекций`)
-      
-    } catch (error) {
-      console.error(`❌ Ошибка глобального обновления:`, error)
-    }
+    console.log('⚠️ GlobalEcosystemCache.refreshAllData отключен для предотвращения дублирования запросов')
+    console.log('💡 Используйте PublicDashboard для загрузки данных')
+    return
   }
 
   /**
-   * Batch-загрузка балансов всех участников
+   * Batch-загрузка балансов всех участников (ОТКЛЮЧЕНО)
    */
   private async refreshAllBalances(): Promise<void> {
-    const wallets = this.participants.map(p => p.walletAddress)
-    
-    try {
-      // Используем существующий batch API
-      const response = await fetch('/api/token-balances', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          wallets,
-          mint: this.PECOIN_MINT
-        })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        
-        // Обновляем локальный кэш
-        Object.entries(data.balances).forEach(([wallet, balance]) => {
-          this.ecosystemData.balances.set(wallet, balance as number)
-        })
-        
-        console.log(`✅ Batch-загружено ${Object.keys(data.balances).length} балансов`)
-      }
-    } catch (error) {
-      console.error(`❌ Ошибка загрузки балансов:`, error)
-    }
+    console.log('⚠️ GlobalEcosystemCache.refreshAllBalances отключен для предотвращения дублирования с PublicDashboard')
+    return
   }
 
   /**
-   * Параллельная загрузка NFT всех участников
+   * ✅ ОПТИМИЗИРОВАННАЯ: Batch-загрузка NFT всех участников одним запросом (ОТКЛЮЧЕНО)
    */
   private async refreshAllNFTs(): Promise<void> {
-    const batchSize = 10 // Загружаем по 10 участников параллельно
-    
-    for (let i = 0; i < this.participants.length; i += batchSize) {
-      const batch = this.participants.slice(i, i + batchSize)
-      
-      const promises = batch.map(async (participant) => {
-        try {
-          const response = await fetch('/api/nft-collection', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ walletAddress: participant.walletAddress })
-          })
-          
-          if (response.ok) {
-            const data = await response.json()
-            this.ecosystemData.nfts.set(participant.walletAddress, data.nfts || [])
-            return data.nfts?.length || 0
-          }
-        } catch (error) {
-          console.error(`❌ Ошибка загрузки NFT для ${participant.walletAddress}:`, error)
-          return 0
-        }
-      })
-      
-      const results = await Promise.all(promises)
-      const totalNFTs = results.reduce((sum, count) => sum + count, 0)
-      console.log(`✅ Batch ${Math.floor(i/batchSize) + 1}: загружено ${totalNFTs} NFT`)
-      
-      // Пауза между батчами чтобы не перегружать API
-      if (i + batchSize < this.participants.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-    }
+    console.log('⚠️ GlobalEcosystemCache.refreshAllNFTs отключен для предотвращения дублирования с PublicDashboard')
+    return
   }
 
   /**
-   * Загрузка последних транзакций для активных участников
+   * Загрузка последних транзакций для активных участников (ОТКЛЮЧЕНО)
    */
   private async refreshAllTransactions(): Promise<void> {
-    // Загружаем транзакции только для участников с балансом > 0
-    const activeParticipants = this.participants.filter(p => 
-      (this.ecosystemData.balances.get(p.walletAddress) || 0) > 0
-    )
-    
-    console.log(`🔄 Загрузка транзакций для ${activeParticipants.length} активных участников`)
-    
-    const promises = activeParticipants.map(async (participant) => {
-      try {
-        const response = await fetch('/api/pecoin-history', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            walletAddress: participant.walletAddress,
-            limit: 10 
-          })
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          this.ecosystemData.transactions.set(participant.walletAddress, data.transactions || [])
-          return data.transactions?.length || 0
-        }
-      } catch (error) {
-        console.error(`❌ Ошибка загрузки транзакций для ${participant.walletAddress}:`, error)
-        return 0
-      }
-    })
-    
-    const results = await Promise.all(promises)
-    const totalTxs = results.reduce((sum, count) => sum + count, 0)
-    console.log(`✅ Загружено ${totalTxs} транзакций`)
+    console.log('⚠️ GlobalEcosystemCache.refreshAllTransactions отключен для предотвращения дублирования запросов')
+    return
   }
 
   /**
@@ -232,78 +121,19 @@ class EcosystemCache {
   }
 
   /**
-   * Принудительное обновление данных конкретного участника
+   * Принудительное обновление данных конкретного участника (ОТКЛЮЧЕНО)
    */
   async refreshParticipant(walletAddress: string): Promise<void> {
-    const participant = this.participants.find(p => p.walletAddress === walletAddress)
-    if (!participant) return
-
-    console.log(`🔄 Обновление данных участника: ${walletAddress}`)
-    
-    // Параллельно обновляем все типы данных
-    await Promise.all([
-      this.refreshParticipantBalance(walletAddress),
-      this.refreshParticipantNFTs(walletAddress),
-      this.refreshParticipantTransactions(walletAddress)
-    ])
-  }
-
-  private async refreshParticipantBalance(walletAddress: string): Promise<void> {
-    // Инвалидируем кэш и загружаем заново
-    serverCache.invalidate(`token-balance:owner:${walletAddress}`)
-    await this.refreshAllBalances()
-  }
-
-  private async refreshParticipantNFTs(walletAddress: string): Promise<void> {
-    serverCache.invalidate(`nft-collection:wallet:${walletAddress}`)
-    
-    try {
-      const response = await fetch('/api/nft-collection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        this.ecosystemData.nfts.set(walletAddress, data.nfts || [])
-      }
-    } catch (error) {
-      console.error(`❌ Ошибка обновления NFT для ${walletAddress}:`, error)
-    }
-  }
-
-  private async refreshParticipantTransactions(walletAddress: string): Promise<void> {
-    serverCache.invalidate(`tx-history:${walletAddress}`)
-    
-    try {
-      const response = await fetch('/api/pecoin-history', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletAddress, limit: 10 })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        this.ecosystemData.transactions.set(walletAddress, data.transactions || [])
-      }
-    } catch (error) {
-      console.error(`❌ Ошибка обновления транзакций для ${walletAddress}:`, error)
-    }
+    console.log('⚠️ GlobalEcosystemCache.refreshParticipant отключен для предотвращения дублирования запросов')
+    return
   }
 
   /**
-   * Запуск периодического обновления
+   * Запуск периодического обновления (ОТКЛЮЧЕНО)
    */
   private startPeriodicRefresh(): void {
-    if (this.refreshTimer) {
-      clearInterval(this.refreshTimer)
-    }
-    
-    this.refreshTimer = setInterval(() => {
-      console.log(`⏰ Периодическое обновление экосистемы`)
-      this.refreshAllData()
-    }, this.GLOBAL_REFRESH_INTERVAL)
+    console.log('⚠️ GlobalEcosystemCache.startPeriodicRefresh отключен для предотвращения дублирования запросов')
+    return
   }
 
   /**
@@ -314,6 +144,16 @@ class EcosystemCache {
       clearInterval(this.refreshTimer)
       this.refreshTimer = undefined
     }
+  }
+
+  private async refreshParticipantNFTs(walletAddress: string): Promise<void> {
+    console.log('⚠️ refreshParticipantNFTs отключен для предотвращения дублирования запросов')
+    return
+  }
+
+  private async refreshParticipantTransactions(walletAddress: string): Promise<void> {
+    console.log('⚠️ refreshParticipantTransactions отключен для предотвращения дублирования запросов')
+    return
   }
 }
 

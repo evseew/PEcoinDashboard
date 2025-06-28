@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 
 export interface NFTCollection {
   id: string
@@ -197,5 +197,117 @@ export function useNFTCollections() {
     getCollectionById,
     getCollectionByTreeAddress,
     getTotalStats
+  }
+}
+
+/**
+ * ✅ НОВОЕ: Batch получение NFT коллекций для множества кошельков
+ */
+export function useBatchNFTCollections(wallets: string[]) {
+  const [batchData, setBatchData] = useState<{
+    results: Record<string, any>
+    isLoading: boolean
+    error: string | null
+    lastUpdated: number | null
+    timing?: any
+  }>({
+    results: {},
+    isLoading: false,
+    error: null,
+    lastUpdated: null
+  })
+
+  const fetchBatchNFTs = useCallback(async () => {
+    if (wallets.length === 0) {
+      setBatchData(prev => ({ ...prev, results: {}, isLoading: false }))
+      return
+    }
+
+    console.log(`[useBatchNFTCollections] 🚀 Загружаю количество NFT для ${wallets.length} кошельков...`)
+    setBatchData(prev => ({ ...prev, isLoading: true, error: null }))
+
+    try {
+      // ✅ ИСПОЛЬЗУЕМ НОВЫЙ ОПТИМИЗИРОВАННЫЙ ENDPOINT
+      const response = await fetch('/api/nft-collection/batch-counts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallets })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Неизвестная ошибка batch загрузки NFT')
+      }
+
+      // ✅ ПРЕОБРАЗУЕМ ФОРМАТ: counts -> results для совместимости
+      const results: Record<string, any> = {}
+      Object.entries(data.counts || {}).forEach(([wallet, count]) => {
+        results[wallet] = {
+          success: true,
+          count: count as number,
+          nfts: [] // Пустой массив для совместимости
+        }
+      })
+
+      setBatchData({
+        results,
+        isLoading: false,
+        error: null,
+        lastUpdated: Date.now(),
+        timing: data.timing
+      })
+
+      const totalNFTs = data.totalNFTs || 0
+      console.log(`[useBatchNFTCollections] ✅ Загружено количества для ${Object.keys(results).length} кошельков (${totalNFTs} NFT) за ${data.timing?.total || 0}ms`)
+
+    } catch (error) {
+      console.error('[useBatchNFTCollections] ❌ Ошибка:', error)
+      setBatchData(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Ошибка загрузки NFT'
+      }))
+    }
+  }, [wallets])
+
+  // Мемоизируем wallets для стабильности
+  const stableWallets = useMemo(() => wallets, [wallets.join(',')])
+  
+  useEffect(() => {
+    if (stableWallets.length > 0) {
+      fetchBatchNFTs()
+    }
+  }, [stableWallets, fetchBatchNFTs])
+
+  // Функция для получения NFT конкретного кошелька из batch результатов
+  const getNFTsForWallet = useCallback((walletAddress: string) => {
+    const result = batchData.results[walletAddress]
+    return result?.success ? result.nfts || [] : []
+  }, [batchData.results])
+
+  // Функция для получения количества NFT кошелька
+  const getNFTCountForWallet = useCallback((walletAddress: string) => {
+    const result = batchData.results[walletAddress]
+    return result?.success ? result.count || 0 : 0
+  }, [batchData.results])
+
+  return {
+    batchResults: batchData.results,
+    isLoading: batchData.isLoading,
+    error: batchData.error,
+    lastUpdated: batchData.lastUpdated,
+    timing: batchData.timing,
+    refetch: fetchBatchNFTs,
+    getNFTsForWallet,
+    getNFTCountForWallet,
+    // Статистика
+    totalWallets: wallets.length,
+    loadedWallets: Object.keys(batchData.results).length,
+    totalNFTs: Object.values(batchData.results).reduce((sum: number, result: any) => sum + (result.count || 0), 0)
   }
 } 

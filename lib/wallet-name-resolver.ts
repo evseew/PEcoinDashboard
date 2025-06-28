@@ -1,5 +1,5 @@
 // Резолвинг адресов кошельков в имена участников экосистемы
-import { dynamicEcosystemCache } from './dynamic-ecosystem-cache'
+import { supabase } from '@/lib/supabaseClient'
 
 export interface WalletNameInfo {
   name: string
@@ -7,10 +7,19 @@ export interface WalletNameInfo {
   shortAddress: string
 }
 
+interface Participant {
+  name: string
+  walletAddress: string
+  type: 'team' | 'startup' | 'staff'
+}
+
 class WalletNameResolver {
   private nameCache = new Map<string, WalletNameInfo | null>()
   private cacheExpiry = new Map<string, number>()
   private readonly CACHE_DURATION = 5 * 60 * 1000 // 5 минут
+  private participantsCache: Participant[] = []
+  private lastParticipantsRefresh = 0
+  private readonly PARTICIPANTS_CACHE_TTL = 5 * 60 * 1000 // 5 минут
 
   /**
    * Очистить кэш
@@ -18,13 +27,86 @@ class WalletNameResolver {
   clearCache() {
     this.nameCache.clear()
     this.cacheExpiry.clear()
+    this.participantsCache = []
+    this.lastParticipantsRefresh = 0
     console.log(`[WalletNameResolver] 🧹 Кэш очищен`)
+  }
+
+  /**
+   * ✅ ИСПРАВЛЕНО: Загружаем участников напрямую из Supabase
+   */
+  private async refreshParticipants(): Promise<Participant[]> {
+    const now = Date.now()
+    if (this.participantsCache.length > 0 && (now - this.lastParticipantsRefresh) < this.PARTICIPANTS_CACHE_TTL) {
+      return this.participantsCache
+    }
+
+    try {
+      console.log(`[WalletNameResolver] 🔄 Загружаем участников напрямую из Supabase...`)
+      
+      const [teamsResponse, startupsResponse, staffResponse] = await Promise.all([
+        supabase.from('teams').select('name, wallet_address'),
+        supabase.from('startups').select('name, wallet_address'),
+        supabase.from('staff').select('name, wallet_address')
+      ])
+      
+      const participants: Participant[] = []
+      
+      // Команды
+      if (teamsResponse.data) {
+        teamsResponse.data.forEach((team: any) => {
+          if (team.wallet_address) {
+            participants.push({
+              name: team.name,
+              walletAddress: team.wallet_address,
+              type: 'team'
+            })
+          }
+        })
+      }
+      
+      // Стартапы
+      if (startupsResponse.data) {
+        startupsResponse.data.forEach((startup: any) => {
+          if (startup.wallet_address) {
+            participants.push({
+              name: startup.name,
+              walletAddress: startup.wallet_address,
+              type: 'startup'
+            })
+          }
+        })
+      }
+      
+      // Сотрудники
+      if (staffResponse.data) {
+        staffResponse.data.forEach((staff: any) => {
+          if (staff.wallet_address) {
+            participants.push({
+              name: staff.name,
+              walletAddress: staff.wallet_address,
+              type: 'staff'
+            })
+          }
+        })
+      }
+      
+      this.participantsCache = participants
+      this.lastParticipantsRefresh = now
+      
+      console.log(`[WalletNameResolver] ✅ Загружено ${participants.length} участников из Supabase`)
+      return participants
+      
+    } catch (error) {
+      console.error(`[WalletNameResolver] ❌ Ошибка загрузки участников:`, error)
+      return []
+    }
   }
 
   /**
    * Получить имя для адреса кошелька
    */
-  getNameForWallet(walletAddress: string): WalletNameInfo | null {
+  async getNameForWallet(walletAddress: string): Promise<WalletNameInfo | null> {
     if (!walletAddress || walletAddress === "Unknown" || walletAddress.includes("Unknown/")) {
       return null
     }
@@ -37,8 +119,8 @@ class WalletNameResolver {
       return cached
     }
 
-    // Ищем в экосистеме
-    const participants = dynamicEcosystemCache.getAllParticipants()
+    // ✅ ИСПРАВЛЕНО: Загружаем участников напрямую из Supabase
+    const participants = await this.refreshParticipants()
     
     // Если экосистема пуста, не кэшируем результат
     if (participants.length === 0) {
@@ -69,22 +151,18 @@ class WalletNameResolver {
   }
 
   /**
-   * Получить отображаемое имя
+   * Получить отображаемое имя (DEPRECATED - используйте async версию)
    */
   getDisplayName(walletAddress: string): string {
-    const info = this.getNameForWallet(walletAddress)
-    return info ? info.name : this.formatAddress(walletAddress)
+    console.log(`[WalletNameResolver] ⚠️ getDisplayName устарел, используйте async getNameForWallet`)
+    return this.formatAddress(walletAddress)
   }
 
   /**
-   * Получить отображаемое имя с типом
+   * Получить отображаемое имя с типом (DEPRECATED - используйте async версию)
    */
   getDisplayNameWithType(walletAddress: string): string {
-    const info = this.getNameForWallet(walletAddress)
-    if (info) {
-      const typeEmoji = info.type === 'team' ? '👥' : info.type === 'startup' ? '🚀' : '👨‍💼'
-      return `${typeEmoji} ${info.name}`
-    }
+    console.log(`[WalletNameResolver] ⚠️ getDisplayNameWithType устарел, используйте async getNameForWallet`)
     return this.formatAddress(walletAddress)
   }
 
@@ -108,7 +186,8 @@ class WalletNameResolver {
       total,
       hits,
       misses,
-      hitRate: total > 0 ? (hits / total * 100).toFixed(1) + '%' : '0%'
+      hitRate: total > 0 ? (hits / total * 100).toFixed(1) + '%' : '0%',
+      participantsLoaded: this.participantsCache.length > 0
     }
   }
 }
