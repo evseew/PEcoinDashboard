@@ -278,15 +278,6 @@ export function useEntityDetail({
 
   // ✅ ОТДЕЛЬНЫЕ эффекты для NFT и транзакций для независимой загрузки
   useEffect(() => {
-    console.log(`[useEntityDetail] 🔍 NFT Effect triggered:`, {
-      hasWallet: !!entity?.walletAddress,
-      walletAddress: entity?.walletAddress,
-      nftsLength: entity?.nfts?.length,
-      nftsLoading: entity?.nftsLoading,
-      nftLoadStarted,
-      entityName: entity?.name
-    })
-    
     if (entity?.walletAddress && 
         entity.nfts.length === 0 && 
         !entity.nftsLoading && 
@@ -294,10 +285,8 @@ export function useEntityDetail({
       console.log(`[useEntityDetail] 🎨 Автоматически загружаю NFT для ${entity.name}`)
       setNftLoadStarted(entity.walletAddress) // ✅ Помечаем что загрузка начата
       loadNFTs(entity.walletAddress, entity.name)
-    } else {
-      console.log(`[useEntityDetail] ⏸️ Условия для загрузки NFT не выполнены для ${entity?.name}`)
     }
-  }, [entity?.walletAddress, entity?.name, entity?.nfts?.length, entity?.nftsLoading, nftLoadStarted, loadNFTs])
+  }, [entity?.walletAddress, entity?.name, entity?.nftsLoading, nftLoadStarted])
 
   useEffect(() => {
     if (entity?.walletAddress && entity.transactions.length === 0 && !entity.transactionsLoading) {
