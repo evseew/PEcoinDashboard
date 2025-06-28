@@ -25,7 +25,7 @@ function createRpcInstance(url: string) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dasRequest),
-        signal: AbortSignal.timeout(8000) // Более короткий timeout для counts
+        signal: AbortSignal.timeout(4000) // ✅ Быстрый timeout для counts (4 сек)
       })
       
       if (!response.ok) {
@@ -44,7 +44,7 @@ function createRpcInstance(url: string) {
 
 // Кэш для NFT количества
 const nftCountCache = new Map<string, { count: number, timestamp: number }>()
-const CACHE_TTL = 2 * 60 * 1000 // 2 минуты кэш для количества
+const CACHE_TTL = 10 * 60 * 1000 // ✅ 10 минут кэш для количества (NFT меняются редко)
 
 function getCachedNFTCount(wallet: string): number | null {
   const cached = nftCountCache.get(wallet)
@@ -193,7 +193,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ✅ ОПТИМИЗИРОВАННАЯ BATCH ОБРАБОТКА для counts (быстрее чем полные NFT)
-    const BATCH_SIZE = 5 // Больший размер для counts (легче чем полные NFT)
+    const BATCH_SIZE = 8 // ✅ Увеличенный размер для counts (легче чем полные NFT)
     const batches: string[][] = []
     
     for (let i = 0; i < validWallets.length; i += BATCH_SIZE) {
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
       const batchResults = await Promise.allSettled(
         batchPromises.map(p => Promise.race([
           p,
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 6000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000)) // ✅ Быстрый timeout
         ]))
       )
 
@@ -242,9 +242,10 @@ export async function POST(request: NextRequest) {
       const batchTime = Date.now() - batchStart
       console.log(`[NFT Batch Counts] ✅ Батч ${batchIndex + 1}/${batches.length} обработан за ${batchTime}ms`)
 
-      // Короткая пауза между батчами
-      if (batchIndex < batches.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 200))
+      // ✅ Убираем пауза между батчами для максимальной скорости
+      // Пауза только если много батчей
+      if (batchIndex < batches.length - 1 && batches.length > 5) {
+        await new Promise(resolve => setTimeout(resolve, 100))
       }
     }
 

@@ -88,7 +88,7 @@ export default function StaffPage() {
     }
   }
 
-  // ✅ НОВАЯ ФУНКЦИЯ: BATCH-загрузка NFT counts всех участников состава одним запросом
+  // ✅ ОПТИМИЗИРОВАННАЯ ФУНКЦИЯ: BATCH-загрузка NFT counts с кэшированием
   const fetchAllNFTCounts = async (staffList: Staff[]) => {
     if (staffList.length === 0) return
 
@@ -106,26 +106,41 @@ export default function StaffPage() {
         return
       }
       
-      // ✅ ИСПОЛЬЗУЕМ НОВЫЙ BATCH ENDPOINT
+      // ✅ ИСПОЛЬЗУЕМ BATCH ENDPOINT с таймаутом
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 сек максимум
+      
       const response = await fetch('/api/nft-collection/batch-counts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           wallets  // Используем новый batch API
         }),
+        signal: controller.signal
       })
+      
+      clearTimeout(timeoutId)
       
       if (response.ok) {
         const data = await response.json()
         setNftCounts(data.counts || {})
-        console.log(`[Staff Page] ✅ Загружено ${Object.keys(data.counts || {}).length} NFT counts за ${data.timing?.total || 0}ms`)
+        
+        const totalNFTs = Object.values(data.counts || {}).reduce((sum: number, count: any) => sum + count, 0)
+        const timing = data.timing?.total || 0
+        const fromCache = data.timing?.fromCache
+        
+        console.log(`[Staff Page] ✅ Загружено ${Object.keys(data.counts || {}).length} кошельков, ${totalNFTs} NFT за ${timing}ms ${fromCache ? '(из кэша)' : ''}`)
       } else {
         console.error('[Staff Page] ❌ Ошибка загрузки NFT counts:', response.status)
         const errorText = await response.text()
         console.error('[Staff Page] ❌ Детали ошибки:', errorText)
       }
-    } catch (error) {
-      console.error('[Staff Page] ❌ Ошибка получения NFT counts:', error)
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        console.warn('[Staff Page] ⏰ Загрузка NFT counts заняла слишком много времени, отменена')
+      } else {
+        console.error('[Staff Page] ❌ Ошибка получения NFT counts:', error)
+      }
     } finally {
       setNftCountsLoading(false)
     }
@@ -231,7 +246,7 @@ export default function StaffPage() {
             {nftCountsLoading && (
               <div className="flex items-center text-sm text-gray-500">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-500 mr-2"></div>
-                Loading NFTs...
+                <span>NFT остатки загружаются...</span>
               </div>
             )}
           </div>
