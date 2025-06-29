@@ -63,24 +63,24 @@ export function EntityListItem({
         }}
       >
         <div className={`camp-card hover:border-opacity-100 transition-all duration-300 ${borderColor} group-hover:shadow-xl group-hover:shadow-${isTeam ? '[#E63946]' : '[#6ABECD]'}/10`}>
-          <div className="flex items-center justify-between p-6">
-            <div className="flex items-center space-x-4 flex-1">
+          <div className="flex items-center justify-between p-3 sm:p-6">
+            <div className="flex items-center space-x-2 sm:space-x-4 flex-1">
               <div className="relative flex-shrink-0">
                 {entity.logo ? (
                   <div className="relative">
                     <img
                       src={entity.logo}
                       alt={entity.name + " logo"}
-                      className="w-16 h-16 object-cover rounded-2xl border-2 border-white dark:border-gray-700 shadow-lg"
+                      className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-2xl border-2 border-white dark:border-gray-700 shadow-lg"
                     />
                     <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${bgGradient} opacity-0 group-hover:opacity-20 transition-opacity duration-300`}></div>
                   </div>
                 ) : (
-                  <div className={`w-16 h-16 bg-gradient-to-br ${bgGradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                  <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br ${bgGradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
                     {isTeam ? (
-                      <Heart className="w-8 h-8 text-white" />
+                      <Heart className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                     ) : (
-                      <Rocket className="w-8 h-8 text-white" />
+                      <Rocket className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                     )}
                   </div>
                 )}
@@ -88,7 +88,7 @@ export function EntityListItem({
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-lg font-display font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:bg-clip-text group-hover:from-[var(--primary)] group-hover:to-[var(--secondary)] transition-all duration-300"
+                  <h3 className="text-base sm:text-lg font-display font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:bg-clip-text group-hover:from-[var(--primary)] group-hover:to-[var(--secondary)] transition-all duration-300"
                       style={{ '--primary': primaryColor, '--secondary': secondaryColor } as any}>
                     {entity.name}
                   </h3>
@@ -99,21 +99,21 @@ export function EntityListItem({
                   />
                 </div>
                 {!isTeam && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed">
                     {entity.description || `Участник экосистемы PEcoin стартап`}
                   </p>
                 )}
               </div>
             </div>
 
-            <div className="flex items-center space-x-4 ml-auto">
+            <div className="flex items-center space-x-1 sm:space-x-4 ml-auto">
               {/* Баланс PEcoin */}
               <div className="text-right">
                 <div className="flex items-center justify-end">
-                  <div className="w-6 h-6 mr-2">
+                  <div className="w-4 h-4 sm:w-6 sm:h-6 mr-1 sm:mr-2">
                     <img src="/images/pecoin.png" alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
                   </div>
-                  <div className="text-xl font-display font-bold text-gray-900 dark:text-gray-100 tabular-nums">
+                  <div className="text-sm sm:text-xl font-display font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                     {balance.toLocaleString()}
                   </div>
                 </div>
@@ -122,12 +122,12 @@ export function EntityListItem({
               {/* NFT счетчик для команд (кубок) */}
               {isTeam && (
                 <motion.div 
-                  className="flex items-center bg-[#FFE4B5] dark:bg-[#FFE4B5]/20 px-2 py-1 rounded-full min-w-[50px] justify-center"
+                  className="flex items-center bg-[#FFE4B5] dark:bg-[#FFE4B5]/20 px-1 py-0.5 sm:px-2 sm:py-1 rounded-full min-w-[40px] sm:min-w-[50px] justify-center"
                   whileHover={{ scale: 1.05 }}
                   title={`${nftCount || 0} NFT в коллекции`}
                 >
-                  <Trophy className="h-4 w-4 text-[#FFA41B] mr-1" />
-                  <span className="text-sm font-bold text-[#FFA41B] tabular-nums">
+                  <Trophy className="h-3 w-3 sm:h-4 sm:w-4 text-[#FFA41B] mr-0.5 sm:mr-1" />
+                  <span className="text-xs sm:text-sm font-bold text-[#FFA41B] tabular-nums">
                     {nftCount || 0}
                   </span>
                 </motion.div>
@@ -136,12 +136,12 @@ export function EntityListItem({
               {/* NFT счетчик для стартапов (цель) */}
               {!isTeam && (
                 <motion.div 
-                  className="flex items-center bg-[#D8F2F9] dark:bg-[#D8F2F9]/20 px-2 py-1 rounded-full min-w-[50px] justify-center"
+                  className="flex items-center bg-[#D8F2F9] dark:bg-[#D8F2F9]/20 px-1 py-0.5 sm:px-2 sm:py-1 rounded-full min-w-[40px] sm:min-w-[50px] justify-center"
                   whileHover={{ scale: 1.05 }}
                   title={`${nftCount || 0} NFT в коллекции`}
                 >
-                  <Target className="h-4 w-4 text-[#3457D5] mr-1" />
-                  <span className="text-sm font-bold text-[#3457D5] tabular-nums">
+                  <Target className="h-3 w-3 sm:h-4 sm:w-4 text-[#3457D5] mr-0.5 sm:mr-1" />
+                  <span className="text-xs sm:text-sm font-bold text-[#3457D5] tabular-nums">
                     {nftCount || 0}
                   </span>
                 </motion.div>
