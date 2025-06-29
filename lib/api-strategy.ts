@@ -17,8 +17,8 @@ const API_ROUTING = {
   mintBatch: { source: 'external' as ApiSource },
   processImages: { source: 'external' as ApiSource },
   
-  // Автоматический выбор по нагрузке
-  getWalletNFTs: { source: 'auto' as ApiSource }
+  // ✅ ИСПРАВЛЕНО: Используем надежный internal API для NFT
+  getWalletNFTs: { source: 'internal' as ApiSource }
 }
 
 class HybridApiClient {
@@ -57,6 +57,13 @@ class HybridApiClient {
         ...options.headers
       }
     })
+    
+    // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: Проверяем успешность запроса
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Internal API error: ${response.status} ${response.statusText}. ${errorText}`)
+    }
+    
     return response.json()
   }
 
@@ -73,6 +80,13 @@ class HybridApiClient {
         ...options.headers
       }
     })
+    
+    // ✅ ДОБАВЛЯЕМ ПРОВЕРКУ И ДЛЯ EXTERNAL API
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`External API error: ${response.status} ${response.statusText}. ${errorText}`)
+    }
+    
     return response.json()
   }
 
@@ -84,6 +98,11 @@ class HybridApiClient {
   }
 
   private async checkExternalHealth(): Promise<boolean> {
+    // ✅ ИСПРАВЛЕНИЕ: Если external URL не настроен, сразу возвращаем false
+    if (!this.externalBaseUrl || this.externalBaseUrl.trim() === '') {
+      return false
+    }
+    
     try {
       const response = await fetch(`${this.externalBaseUrl}/health`, { 
         signal: AbortSignal.timeout(3000) 
