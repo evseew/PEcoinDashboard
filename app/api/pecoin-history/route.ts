@@ -506,10 +506,16 @@ export async function POST(request: Request) {
       const senderInfo = await walletNameResolver.getNameForWallet(tx.sender)
       const receiverInfo = await walletNameResolver.getNameForWallet(tx.receiver)
       
+      // ✅ ИСПРАВЛЕНО: Заменены deprecated getDisplayName() на formatAddress()
+      const formatAddress = (address: string): string => {
+        if (!address || address.length <= 12) return address
+        return `${address.slice(0, 4)}...${address.slice(-4)}`
+      }
+      
       return {
         ...tx,
-        senderName: senderInfo ? senderInfo.name : walletNameResolver.getDisplayName(tx.sender),
-        receiverName: receiverInfo ? receiverInfo.name : walletNameResolver.getDisplayName(tx.receiver),
+        senderName: senderInfo ? senderInfo.name : formatAddress(tx.sender),
+        receiverName: receiverInfo ? receiverInfo.name : formatAddress(tx.receiver),
         senderInfo,
         receiverInfo
       }
