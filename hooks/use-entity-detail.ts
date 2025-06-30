@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { signedUrlCache } from '@/lib/signed-url-cache'
 import { globalBalanceCache } from '@/hooks/use-dashboard-balances'
@@ -21,8 +21,6 @@ interface EntityDetailData {
   nfts: any[]
   nftCount: number
   transactions: any[]
-  transactionsLoading: boolean
-  nftsLoading: boolean
 }
 
 interface UseEntityDetailOptions {
@@ -39,24 +37,36 @@ export function useEntityDetail({
   preloadedNFTCount = 0,
   preloadedNFTs = []
 }: UseEntityDetailOptions) {
+  // ✅ ОСНОВНЫЕ ДАННЫЕ (без флагов загрузки)
   const [entity, setEntity] = useState<EntityDetailData | null>(null)
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [nextBeforeSignature, setNextBeforeSignature] = useState<string | undefined>()
-  const [nftLoadStarted, setNftLoadStarted] = useState<string | null>(null) // ✅ Флаг загрузки NFT
+
+  // ✅ РАЗДЕЛЕННЫЕ СОСТОЯНИЯ ЗАГРУЗКИ
+  const [isLoadingEntity, setIsLoadingEntity] = useState(true)
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false)
+  const [isLoadingNFTs, setIsLoadingNFTs] = useState(false)
+
+  // ✅ ФЛАГИ ИНИЦИАЛИЗАЦИИ (предотвращают повторные загрузки)
+  const [transactionsInitialized, setTransactionsInitialized] = useState(false)
+  const [nftsInitialized, setNftsInitialized] = useState(false)
+
+  // ✅ REFS для стабильных значений (не вызывают пересоздание callback'ов)
+  const walletAddressRef = useRef<string>('')
+  const entityNameRef = useRef<string>('')
 
   // ✅ ПЕРЕИСПОЛЬЗУЕМ существующий хук для NFT данных
   const { getWalletNFTs } = useHybridNft()
 
   const isTeam = entityType === "teams" || entityType === "team"
 
-  // ✅ Функция для сжатия адреса кошелька
+  // ✅ Функция для сжатия адреса кошелька (стабильная)
   const formatAddress = useCallback((address: string): string => {
     if (!address || address.length <= 12) return address
     return `${address.slice(0, 4)}...${address.slice(-4)}`
   }, [])
 
-  // ✅ Функция для обогащения транзакций именами участников
+  // ✅ Функция для обогащения транзакций именами (стабильная)
   const enrichTransactionsWithNames = useCallback(async (transactions: any[]) => {
     console.log(`[useEntityDetail] 👥 Обогащаю ${transactions.length} транзакций именами...`)
     
@@ -79,20 +89,16 @@ export function useEntityDetail({
     return enrichedTransactions
   }, [formatAddress])
 
-  // ✅ ИСПРАВЛЕНО: Реактивное обновление баланса из globalBalanceCache
-  useEffect(() => {
-    if (entity?.walletAddress) {
-      const newBalance = globalBalanceCache.balances[entity.walletAddress] || 0
-      setEntity(prev => prev ? { ...prev, balance: newBalance } : null)
-    }
-  }, [globalBalanceCache.balances, entity?.walletAddress])
-
-  // ✅ Загрузка основных данных сущности
+  // ✅ СТАБИЛЬНАЯ функция загрузки основных данных сущности
   const fetchEntityData = useCallback(async () => {
     if (!entityId) return
 
-    setLoading(true)
+    setIsLoadingEntity(true)
     setError(null)
+    
+    // ✅ СБРОС состояний при загрузке новой entity
+    setTransactionsInitialized(false)
+    setNftsInitialized(false)
 
     try {
       // Параллельный запрос в зависимости от типа
@@ -111,6 +117,10 @@ export function useEntityDetail({
       // Получаем signed URL для логотипа
       const logo = await signedUrlCache.getSignedUrl(data.logo_url)
 
+      // ✅ ОБНОВЛЯЕМ refs для стабильных значений
+      walletAddressRef.current = data.wallet_address
+      entityNameRef.current = data.name
+
       setEntity({
         id: data.id,
         name: data.name,
@@ -122,16 +132,11 @@ export function useEntityDetail({
         ageDisplay: data.age_display,
         ageRangeMin: data.age_range_min,
         ageRangeMax: data.age_range_max,
-        // ✅ НАЧИНАЕМ с предзагруженных данных (будут перезаписаны после загрузки полных данных)
+        // ✅ НАЧИНАЕМ с предзагруженных данных
         nfts: preloadedNFTs,
         nftCount: preloadedNFTCount,
-        transactions: [],
-        transactionsLoading: false,
-        nftsLoading: false
+        transactions: []
       })
-
-      // ✅ СБРАСЫВАЕМ флаг загрузки NFT при смене entity
-      setNftLoadStarted(null)
 
       console.log(`[useEntityDetail] ✅ Загружен ${data.name} с балансом ${balance} PEcoin`)
       
@@ -139,25 +144,25 @@ export function useEntityDetail({
       console.error('[useEntityDetail] ❌ Ошибка загрузки:', err)
       setError(err instanceof Error ? err.message : 'Ошибка загрузки данных')
     } finally {
-      setLoading(false)
+      setIsLoadingEntity(false)
     }
-  }, [entityId, entityType, isTeam, preloadedNFTCount, preloadedNFTs])
+  }, [entityId, isTeam, preloadedNFTCount, preloadedNFTs])
 
-  // ✅ РЕФАКТОРИНГ: Использую существующий хук вместо дублирования fetch логики
-  const loadNFTs = useCallback(async (walletAddress: string, entityName: string) => {
-    // ✅ ЗАЩИТА: Проверяем что загрузка еще не идет
-    setEntity(prev => {
-      if (!prev || prev.nftsLoading) {
-        console.log(`[useEntityDetail] ⏸️ NFT уже загружаются для ${entityName}, пропускаем`)
-        return prev
-      }
-      return { ...prev, nftsLoading: true }
-    })
+  // ✅ СТАБИЛЬНАЯ функция загрузки NFT (не зависит от entity state)
+  const loadNFTs = useCallback(async () => {
+    const walletAddress = walletAddressRef.current
+    const entityName = entityNameRef.current
+    
+    if (!walletAddress || isLoadingNFTs || nftsInitialized) {
+      console.log(`[useEntityDetail] ⏸️ NFT загрузка пропущена: wallet=${!!walletAddress}, loading=${isLoadingNFTs}, initialized=${nftsInitialized}`)
+      return
+    }
+
+    setIsLoadingNFTs(true)
 
     try {
       console.log(`[useEntityDetail] 🎨 Загружаю NFT для ${entityName}...`)
       
-      // ✅ ПЕРЕИСПОЛЬЗУЕМ существующий хук вместо fetch
       const response = await getWalletNFTs(walletAddress)
 
       if (response.success && response.nfts && Array.isArray(response.nfts)) {
@@ -175,26 +180,35 @@ export function useEntityDetail({
           treeId: nft.treeId
         }))
 
-        setEntity(prev => prev ? { ...prev, nfts, nftCount: nfts.length, nftsLoading: false } : null)
-        console.log(`[useEntityDetail] ✅ Загружено ${nfts.length} NFT через переиспользованный хук`)
+        setEntity(prev => prev ? { ...prev, nfts, nftCount: nfts.length } : null)
+        console.log(`[useEntityDetail] ✅ Загружено ${nfts.length} NFT`)
       } else {
-        setEntity(prev => prev ? { ...prev, nfts: [], nftCount: 0, nftsLoading: false } : null)
-        console.log(`[useEntityDetail] ℹ️ Нет NFT для ${entityName}`, response)
+        setEntity(prev => prev ? { ...prev, nfts: [], nftCount: 0 } : null)
+        console.log(`[useEntityDetail] ℹ️ Нет NFT для ${entityName}`)
       }
     } catch (error) {
       console.error('[useEntityDetail] ❌ Ошибка загрузки NFT:', error)
-      setEntity(prev => prev ? { ...prev, nfts: [], nftsLoading: false } : null)
+      setEntity(prev => prev ? { ...prev, nfts: [] } : null)
+    } finally {
+      setIsLoadingNFTs(false)
+      setNftsInitialized(true)
     }
-  }, [getWalletNFTs])
+  }, [getWalletNFTs, isLoadingNFTs, nftsInitialized])
 
-  // ✅ ОБЪЕДИНЕННАЯ загрузка транзакций (PEcoin + NFT) - здесь fetch оправдан т.к. это комбинированная логика
+  // ✅ СТАБИЛЬНАЯ функция загрузки транзакций (не зависит от entity state)
   const loadTransactions = useCallback(async (beforeSignature?: string) => {
-    if (!entity?.walletAddress) return
+    const walletAddress = walletAddressRef.current
+    const entityName = entityNameRef.current
+    
+    if (!walletAddress || (isLoadingTransactions && !beforeSignature)) {
+      console.log(`[useEntityDetail] ⏸️ Транзакции загрузка пропущена: wallet=${!!walletAddress}, loading=${isLoadingTransactions}`)
+      return
+    }
 
-    setEntity(prev => prev ? { ...prev, transactionsLoading: true } : null)
+    setIsLoadingTransactions(true)
 
     try {
-      console.log(`[useEntityDetail] 📊 Загружаю транзакции для ${entity.name}...`)
+      console.log(`[useEntityDetail] 📊 Загружаю транзакции для ${entityName}${beforeSignature ? ' (дозагрузка)' : ''}...`)
       
       // ✅ ПАРАЛЛЕЛЬНАЯ загрузка PEcoin и NFT транзакций  
       const [pecoinRes, nftRes] = await Promise.all([
@@ -202,7 +216,7 @@ export function useEntityDetail({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
-            walletAddress: entity.walletAddress, 
+            walletAddress, 
             limit: 10, 
             beforeSignature 
           })
@@ -211,7 +225,7 @@ export function useEntityDetail({
           method: "POST", 
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
-            walletAddress: entity.walletAddress, 
+            walletAddress, 
             limit: 10 
           })
         })
@@ -262,50 +276,66 @@ export function useEntityDetail({
       })
 
       setNextBeforeSignature(nextSignature)
-      console.log(`[useEntityDetail] ✅ Загружено ${enrichedTransactions.length} транзакций для ${entity.name}`)
+      console.log(`[useEntityDetail] ✅ Загружено ${enrichedTransactions.length} транзакций для ${entityName}`)
 
     } catch (error) {
       console.error('[useEntityDetail] ❌ Ошибка загрузки транзакций:', error)
     } finally {
-      setEntity(prev => prev ? { ...prev, transactionsLoading: false } : null)
+      setIsLoadingTransactions(false)
+      if (!beforeSignature) {
+        setTransactionsInitialized(true)
+      }
     }
-  }, [entity?.walletAddress, entity?.name, enrichTransactionsWithNames])
+  }, [enrichTransactionsWithNames, isLoadingTransactions])
 
-  // Загрузка при инициализации
+  // ✅ РЕАКТИВНОЕ обновление баланса из globalBalanceCache
+  useEffect(() => {
+    if (entity?.walletAddress) {
+      const newBalance = globalBalanceCache.balances[entity.walletAddress] || 0
+      setEntity(prev => prev ? { ...prev, balance: newBalance } : null)
+    }
+  }, [globalBalanceCache.balances, entity?.walletAddress])
+
+  // ✅ Загрузка основных данных при инициализации
   useEffect(() => {
     fetchEntityData()
   }, [fetchEntityData])
 
-  // ✅ ОТДЕЛЬНЫЕ эффекты для NFT и транзакций для независимой загрузки
+  // ✅ АВТОМАТИЧЕСКАЯ загрузка NFT после загрузки entity (БЕЗ циклических зависимостей)
   useEffect(() => {
-    if (entity?.walletAddress && 
-        entity.nfts.length === 0 && 
-        !entity.nftsLoading && 
-        nftLoadStarted !== entity.walletAddress) {
-      console.log(`[useEntityDetail] 🎨 Автоматически загружаю NFT для ${entity.name}`)
-      setNftLoadStarted(entity.walletAddress) // ✅ Помечаем что загрузка начата
-      loadNFTs(entity.walletAddress, entity.name)
+    if (entity && !nftsInitialized && !isLoadingNFTs) {
+      console.log(`[useEntityDetail] 🎨 Инициализирую загрузку NFT для ${entity.name}`)
+      loadNFTs()
     }
-  }, [entity?.walletAddress, entity?.name, entity?.nftsLoading, nftLoadStarted])
+  }, [entity?.id, nftsInitialized, isLoadingNFTs, loadNFTs])
 
+  // ✅ АВТОМАТИЧЕСКАЯ загрузка транзакций после загрузки entity (БЕЗ циклических зависимостей)
   useEffect(() => {
-    if (entity?.walletAddress && entity.transactions.length === 0 && !entity.transactionsLoading) {
-      console.log(`[useEntityDetail] 📊 Автоматически загружаю транзакции для ${entity.name}`)
+    if (entity && !transactionsInitialized && !isLoadingTransactions) {
+      console.log(`[useEntityDetail] 📊 Инициализирую загрузку транзакций для ${entity.name}`)
       loadTransactions()
     }
-  }, [entity?.walletAddress, entity?.name, entity?.transactions.length, entity?.transactionsLoading, loadTransactions])
+  }, [entity?.id, transactionsInitialized, isLoadingTransactions, loadTransactions])
 
+  // ✅ СТАБИЛЬНАЯ функция дозагрузки транзакций
   const loadMoreTransactions = useCallback(() => {
-    if (nextBeforeSignature) {
+    if (nextBeforeSignature && !isLoadingTransactions) {
       loadTransactions(nextBeforeSignature)
     }
-  }, [nextBeforeSignature, loadTransactions])
+  }, [nextBeforeSignature, isLoadingTransactions, loadTransactions])
+
+  // ✅ СОСТАВНОЕ состояние loading для обратной совместимости
+  const loading = isLoadingEntity
 
   return {
     entity,
     loading,
     error,
     nextBeforeSignature,
+    
+    // ✅ ДЕТАЛИЗИРОВАННЫЕ состояния загрузки
+    isLoadingTransactions,
+    isLoadingNFTs,
     
     // Методы
     loadMoreTransactions,

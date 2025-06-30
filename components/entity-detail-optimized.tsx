@@ -37,6 +37,8 @@ export function EntityDetailOptimized({
     loading,
     error,
     nextBeforeSignature,
+    isLoadingTransactions,
+    isLoadingNFTs,
     loadMoreTransactions
   } = useEntityDetail({
     entityType,
@@ -227,7 +229,7 @@ export function EntityDetailOptimized({
               </div>
               
               <div className="px-2">
-                {entity.nftsLoading ? (
+                {isLoadingNFTs ? (
                   <div className="flex items-center justify-center py-10">
                     <motion.div
                       className={`w-8 h-8 border-4 border-t-transparent rounded-full ${isTeam ? "border-[#E63946]" : "border-[#6ABECD]"}`}
@@ -272,7 +274,7 @@ export function EntityDetailOptimized({
                   <h2 className={`text-2xl font-display font-bold ${isTeam ? "text-[#E63946]" : ""}`}>Transaction History</h2>
                 </div>
                 
-                {entity.transactionsLoading && (
+                {isLoadingTransactions && (
                   <div className="flex items-center">
                     <motion.div
                       className={`w-5 h-5 border-2 border-t-transparent rounded-full mr-2 ${isTeam ? "border-[#E63946]" : "border-[#6ABECD]"}`}
@@ -283,14 +285,14 @@ export function EntityDetailOptimized({
                   </div>
                 )}
                 
-                {!entity.transactionsLoading && entity.transactions.length > 0 && (
+                {!isLoadingTransactions && entity.transactions.length > 0 && (
                   <div className={`px-3 py-1 rounded-full text-sm font-medium ${bgColor} ${textColor}`}>
                     {entity.transactions.length} транзакци{entity.transactions.length === 1 ? 'я' : entity.transactions.length < 5 ? 'и' : 'й'}
                   </div>
                 )}
               </div>
               
-              {entity.transactionsLoading ? (
+              {isLoadingTransactions ? (
                 <div className="flex items-center justify-center py-10">
                   <motion.div
                     className={`w-8 h-8 border-4 border-t-transparent rounded-full ${isTeam ? "border-[#E63946]" : "border-[#6ABECD]"}`}
@@ -312,7 +314,7 @@ export function EntityDetailOptimized({
                     <div className="flex justify-center mt-6">
                       <motion.button
                         onClick={loadMoreTransactions}
-                        disabled={entity.transactionsLoading}
+                        disabled={isLoadingTransactions}
                         className={`px-6 py-3 rounded-xl border-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
                           isTeam 
                             ? "border-[#E63946] text-[#E63946] hover:bg-[#E63946] hover:text-white" 
@@ -321,7 +323,7 @@ export function EntityDetailOptimized({
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
-                        {entity.transactionsLoading ? "Загружается..." : "Загрузить ещё"}
+                        {isLoadingTransactions ? "Загружается..." : "Загрузить ещё"}
                       </motion.button>
                     </div>
                   )}
