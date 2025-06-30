@@ -255,6 +255,12 @@ export default function CollectionSettingsPage() {
     if (!collection.has_valid_tree) {
       return <Badge variant="destructive" className="ml-2">Недоступна</Badge>
     }
+    
+    // ✨ Специальный статус для пустых коллекций (готовых к минтингу)
+    if (collection.has_valid_tree && collection.minted === 0) {
+      return <Badge variant="outline" className="ml-2 bg-amber-50 text-amber-700 border-amber-200">🌱 Готова к минтингу</Badge>
+    }
+    
     if (collection.status === 'completed') {
       return <Badge variant="secondary" className="ml-2">Завершена</Badge>
     }

@@ -38,6 +38,7 @@ interface CollectionData {
   name: string
   description: string
   treeAddress: string
+  collectionAddress?: string
   capacity: number
   minted: number
   creator?: string
@@ -46,6 +47,13 @@ interface CollectionData {
   hasValidTree?: boolean
   supportsDAS?: boolean
   rpcUsed?: string
+  isEmpty?: boolean
+}
+
+interface ValidationState {
+  treeAddressValid: boolean
+  collectionAddressValid: boolean
+  isChecking: boolean
 }
 
 export function ImportCollectionModal({ trigger, onImport }: ImportCollectionModalProps) {
@@ -53,32 +61,41 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(false)
   const [treeAddress, setTreeAddress] = useState('')
+  const [collectionAddress, setCollectionAddress] = useState('')
   const [customName, setCustomName] = useState('')
   const [collectionData, setCollectionData] = useState<CollectionData | null>(null)
-  const [validation, setValidation] = useState({
+  const [validation, setValidation] = useState<ValidationState>({
     treeAddressValid: false,
+    collectionAddressValid: false,
     isChecking: false
   })
 
-  const validateTreeAddress = (address: string) => {
-    if (!address) {
-      setValidation(prev => ({ ...prev, treeAddressValid: false }))
-      return false
-    }
-
-    // Solana address validation (exactly 44 chars, base58)
-    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{44}$/
-    const isValidFormat = base58Regex.test(address)
-    
-    setValidation(prev => ({ ...prev, treeAddressValid: isValidFormat }))
+  const validateAddress = (address: string): boolean => {
+    if (!address) return false
+    const isValidFormat = /^[1-9A-HJ-NP-Za-km-z]{44}$/.test(address)
     return isValidFormat
   }
 
-  const fetchCollectionData = async (address: string) => {
-    if (!validateTreeAddress(address)) {
+  const validateTreeAddress = (address: string) => {
+    const isValid = validateAddress(address)
+    setValidation(prev => ({ ...prev, treeAddressValid: isValid }))
+    return isValid
+  }
+
+  const validateCollectionAddress = (address: string) => {
+    const isValid = validateAddress(address)
+    setValidation(prev => ({ ...prev, collectionAddressValid: isValid }))
+    return isValid
+  }
+
+  const fetchCollectionData = async () => {
+    const useTreeAddress = treeAddress && validation.treeAddressValid
+    const useCollectionAddress = collectionAddress && validation.collectionAddressValid
+    
+    if (!useTreeAddress && !useCollectionAddress) {
       toast({
         title: "Неверный адрес",
-        description: "Введите корректный Solana tree address",
+        description: "Введите корректный Tree Address или Collection Address",
         variant: "destructive"
       })
       return
@@ -86,21 +103,54 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
 
     setFetching(true)
     try {
-      console.log(`[fetchCollectionData] Получаем данные для tree: ${address}`)
+      const requestBody: any = {}
       
-      // Вызываем API для автоматического получения данных коллекции
+      if (useTreeAddress) {
+        console.log(`[fetchCollectionData] Получаем данные для tree: ${treeAddress}`)
+        requestBody.treeAddress = treeAddress
+      } else {
+        console.log(`[fetchCollectionData] Получаем данные для collection: ${collectionAddress}`)
+        requestBody.collectionAddress = collectionAddress
+      }
+      
       const response = await fetch('/api/nft-collection/fetch-tree-data', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ treeAddress: address })
+        body: JSON.stringify(requestBody)
       })
 
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || 'Не удалось получить данные коллекции')
+        // ✨ Улучшенная обработка разных типов ошибок
+        let errorMessage = result.error || 'Не удалось получить данные коллекции'
+        let errorDescription = ''
+
+        if (response.status === 404) {
+          errorMessage = 'Коллекция не найдена'
+          errorDescription = result.details || 'Проверьте правильность адреса коллекции'
+        } else if (result.details) {
+          errorDescription = result.details
+        }
+
+        console.error('API Error Details:', {
+          status: response.status,
+          error: result.error,
+          details: result.details,
+          attemptedRpcs: result.attemptedRpcs,
+          lastError: result.lastError
+        })
+
+        toast({
+          title: errorMessage,
+          description: errorDescription,
+          variant: "destructive",
+          duration: 8000 // Увеличиваем время показа для длинных сообщений
+        })
+        
+        throw new Error(errorMessage)
       }
 
       setCollectionData(result.collection)
@@ -112,11 +162,15 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
 
     } catch (error) {
       console.error('Fetch failed:', error)
-      toast({
-        title: "Ошибка получения данных",
-        description: error instanceof Error ? error.message : "Не удалось получить данные коллекции",
-        variant: "destructive"
-      })
+      // Toast уже показан в блоке обработки ошибок выше для API errors
+      // Этот fallback для network errors
+      if (error instanceof Error && error.message.includes('fetch')) {
+        toast({
+          title: "Ошибка сети",
+          description: "Не удалось подключиться к серверу. Проверьте интернет-соединение.",
+          variant: "destructive"
+        })
+      }
       setCollectionData(null)
     } finally {
       setFetching(false)
@@ -124,7 +178,7 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
   }
 
   const handleImport = async () => {
-    if (!validation.treeAddressValid || !collectionData) {
+    if ((!validation.treeAddressValid && !validation.collectionAddressValid) || !collectionData) {
       toast({
         title: "Ошибка валидации",
         description: "Сначала получите данные коллекции",
@@ -140,7 +194,8 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
         name: customName.trim() || collectionData.name,
         description: collectionData.description || '',
         symbol: collectionData.symbol || 'cNFT',
-        treeAddress: treeAddress,
+        treeAddress: collectionData.treeAddress, // Используем tree address из полученных данных
+        collectionAddress: collectionData.collectionAddress, // ✨ Используем collection address из ответа API
         creator: collectionData.creator,
         capacity: collectionData.capacity,
         minted: collectionData.minted,
@@ -193,10 +248,12 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
 
   const resetForm = () => {
     setTreeAddress('')
+    setCollectionAddress('')
     setCustomName('')
     setCollectionData(null)
     setValidation({
       treeAddressValid: false,
+      collectionAddressValid: false,
       isChecking: false
     })
   }
@@ -214,7 +271,21 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
   const handleTreeAddressChange = (address: string) => {
     setTreeAddress(address)
     validateTreeAddress(address)
-    setCollectionData(null) // Сбрасываем данные при изменении адреса
+    setCollectionData(null)
+    if (address) {
+      setCollectionAddress('')
+      setValidation(prev => ({ ...prev, collectionAddressValid: false }))
+    }
+  }
+
+  const handleCollectionAddressChange = (address: string) => {
+    setCollectionAddress(address)
+    validateCollectionAddress(address)
+    setCollectionData(null)
+    if (address) {
+      setTreeAddress('')
+      setValidation(prev => ({ ...prev, treeAddressValid: false }))
+    }
   }
 
   return (
@@ -234,7 +305,7 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
             Автоимпорт Compressed NFT коллекции
           </DialogTitle>
           <DialogDescription>
-            Введите tree address - система автоматически получит все данные коллекции
+            Введите Tree Address (дерево Merkle) или Collection Address (адрес коллекции) - система автоматически получит все данные
           </DialogDescription>
         </DialogHeader>
 
@@ -245,7 +316,7 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
             <div className="flex gap-2">
               <Input
                 id="tree-address"
-                placeholder="Введите Solana tree address (44 символа)"
+                placeholder="Введите Solana tree address (44 символов)"
                 value={treeAddress}
                 onChange={(e) => handleTreeAddressChange(e.target.value)}
                 className="font-mono text-sm"
@@ -269,10 +340,51 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
             )}
           </div>
 
+                     {/* OR разделитель */}
+           <div className="flex items-center justify-center">
+             <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+               ИЛИ
+             </div>
+           </div>
+
+           {/* Collection Address */}
+           <div>
+             <Label htmlFor="collection-address">Collection Address</Label>
+             <div className="flex gap-2">
+               <Input
+                 id="collection-address"
+                 placeholder="Введите Solana collection address (44 символов)"
+                 value={collectionAddress}
+                 onChange={(e) => handleCollectionAddressChange(e.target.value)}
+                 className="font-mono text-sm"
+               />
+             </div>
+             {validation.collectionAddressValid && (
+               <div className="flex items-center gap-2 mt-2 text-green-600">
+                 <CheckCircle className="h-4 w-4" />
+                 <span className="text-sm">Корректный адрес</span>
+               </div>
+             )}
+             <p className="text-xs text-gray-500 mt-1">
+               Найдет Tree Address автоматически по первому NFT коллекции
+             </p>
+                       </div>
+
+
+
+           {/* Предупреждение если заполнены оба поля */}
+           {treeAddress && collectionAddress && (
+             <div className="flex items-center justify-center">
+               <div className="text-sm text-amber-600 bg-amber-100 px-3 py-1 rounded-full">
+                 ⚠️ Заполните только одно поле
+               </div>
+             </div>
+           )}
+
           {/* Fetch Button */}
-          {validation.treeAddressValid && !collectionData && (
+          {(validation.treeAddressValid || validation.collectionAddressValid) && !collectionData && (
             <Button
-              onClick={() => fetchCollectionData(treeAddress)}
+              onClick={fetchCollectionData}
               disabled={fetching}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600"
             >
@@ -284,7 +396,7 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
               ) : (
                 <>
                   <Search className="h-4 w-4 mr-2" />
-                  Получить данные коллекции
+                  {validation.treeAddressValid ? 'Получить данные по Tree Address' : 'Получить данные по Collection Address'}
                 </>
               )}
             </Button>
@@ -308,6 +420,32 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
                   <div>
                     <span className="text-emerald-700 block text-xs">Символ:</span>
                     <span className="font-medium text-emerald-900 text-sm">{collectionData.symbol || 'cNFT'}</span>
+                  </div>
+                </div>
+
+                {/* ✨ Адреса - показываем найденные tree/collection */}
+                <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                  <h4 className="text-slate-700 font-medium text-xs mb-2">Найденные адреса:</h4>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-slate-600 block text-xs">Tree Address:</span>
+                      <span className="font-mono text-xs text-slate-900 bg-white px-2 py-1 rounded border select-all">
+                        {collectionData.treeAddress}
+                      </span>
+                    </div>
+                    {collectionData.collectionAddress && (
+                      <div>
+                        <span className="text-slate-600 block text-xs">Collection Address:</span>
+                        <span className="font-mono text-xs text-slate-900 bg-white px-2 py-1 rounded border select-all">
+                          {collectionData.collectionAddress}
+                        </span>
+                      </div>
+                    )}
+                    {collectionAddress && !collectionData.collectionAddress && (
+                      <div className="text-amber-600 text-xs">
+                        💡 Введенный Collection Address был использован для поиска Tree Address
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -350,6 +488,14 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
                   }`}>
                     {collectionData.hasValidTree ? '✅ Валидная' : '❌ Проблемы'}
                   </span>
+                  
+                  {/* ✨ Специальный статус для пустых коллекций */}
+                  {collectionData.isEmpty && (
+                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                      🌱 Пустая коллекция
+                    </span>
+                  )}
+                  
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                     collectionData.supportsDAS 
                       ? 'bg-blue-100 text-blue-800'
@@ -362,6 +508,19 @@ export function ImportCollectionModal({ trigger, onImport }: ImportCollectionMod
                   </span>
                 </div>
                 
+                {/* ✨ Специальное сообщение для пустых коллекций */}
+                {collectionData.isEmpty && (
+                  <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">🌱</span>
+                      <span className="text-amber-800 font-semibold text-sm">Готова к минтингу</span>
+                    </div>
+                    <p className="text-amber-700 text-xs leading-relaxed">
+                      Эта коллекция пустая и готова для создания новых NFT. После первого минтинга она станет видна в кошельках и DAS API.
+                    </p>
+                  </div>
+                )}
+
                 {/* Описание */}
                 {collectionData.description && (
                   <div className="mt-3 p-2 bg-emerald-100/50 rounded border-l-4 border-emerald-400">
