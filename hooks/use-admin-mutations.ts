@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { v4 as uuidv4 } from "uuid"
+import { uploadEntityLogo, handleExistingLogo } from "@/lib/upload-client"
 
 // Типы для оптимистичных обновлений
 interface OptimisticUpdate<T> {
@@ -21,19 +22,19 @@ export function useAdminTeamMutations() {
     setIsLoading(true)
     setError(null)
     
-    const tempId = uuidv4()
+    const teamId = uuidv4()
     const optimisticTeam = {
-      id: tempId,
+      id: teamId,
       ...teamData,
       achievements: 0,
+      balance: 0,
       created_at: new Date().toISOString()
     }
 
     // Оптимистичное обновление
     if (optimisticCallback) {
-      const existingUpdates = optimisticUpdatesCache.get('teams') || []
-      optimisticUpdatesCache.set('teams', [...existingUpdates, {
-        tempId,
+      optimisticUpdatesCache.set('teams', [{
+        tempId: teamId,
         operation: 'create',
         data: optimisticTeam
       }])
@@ -41,15 +42,24 @@ export function useAdminTeamMutations() {
     }
 
     try {
-      const { supabase, uploadLogo } = await import("@/lib/supabaseClient")
+      const { supabase } = await import("@/lib/supabaseClient")
       
-      let logoUrl = null
-      const teamId = uuidv4()
-      
+      let logoPath: string | null = null
+
+      // ✅ НОВАЯ унифицированная система загрузки
       if (teamData.logo instanceof File) {
-        logoUrl = await uploadLogo(teamData.logo, "teams", teamId)
-      } else if (typeof teamData.logo === "string") {
-        logoUrl = teamData.logo
+        console.log('[Team Mutations] 📤 Загружаю новый логотип для команды:', teamId)
+        const uploadResult = await uploadEntityLogo(teamData.logo, "teams", teamId)
+        
+        if (!uploadResult.success) {
+          throw new Error(`Ошибка загрузки логотипа: ${uploadResult.error}`)
+        }
+        
+        logoPath = uploadResult.logoPath || null
+        console.log('[Team Mutations] ✅ Логотип загружен:', logoPath)
+      } else {
+        // ✅ FALLBACK для существующих URL
+        logoPath = handleExistingLogo(teamData.logo)
       }
       
       const insertData: any = {
@@ -63,8 +73,8 @@ export function useAdminTeamMutations() {
         age_display: teamData.ageDisplay,
       }
       
-      if (logoUrl) insertData.logo_url = logoUrl
-      
+      if (logoPath) insertData.logo_url = logoPath
+
       const { error } = await supabase.from("teams").insert([insertData]).select()
       
       if (error) {
@@ -103,13 +113,24 @@ export function useAdminTeamMutations() {
     }
 
     try {
-      const { supabase, uploadLogo } = await import("@/lib/supabaseClient")
+      const { supabase } = await import("@/lib/supabaseClient")
       
-      let logoUrl = null
+      let logoPath: string | null = null
+
+      // ✅ НОВАЯ унифицированная система загрузки
       if (teamData.logo instanceof File) {
-        logoUrl = await uploadLogo(teamData.logo, "teams", id)
-      } else if (typeof teamData.logo === "string") {
-        logoUrl = teamData.logo
+        console.log('[Team Mutations] 📤 Обновляю логотип для команды:', id)
+        const uploadResult = await uploadEntityLogo(teamData.logo, "teams", id)
+        
+        if (!uploadResult.success) {
+          throw new Error(`Ошибка загрузки логотипа: ${uploadResult.error}`)
+        }
+        
+        logoPath = uploadResult.logoPath || null
+        console.log('[Team Mutations] ✅ Логотип обновлен:', logoPath)
+      } else {
+        // ✅ FALLBACK для существующих URL (не меняем логотип)
+        logoPath = handleExistingLogo(teamData.logo)
       }
       
       const updateData: any = {
@@ -121,7 +142,10 @@ export function useAdminTeamMutations() {
         age_display: teamData.ageDisplay,
       }
       
-      if (logoUrl) updateData.logo_url = logoUrl
+      // ✅ ОБНОВЛЯЕМ логотип только если был загружен новый файл
+      if (logoPath !== null) {
+        updateData.logo_url = logoPath
+      }
       
       const { error } = await supabase.from("teams").update(updateData).eq("id", id).select()
       
@@ -188,9 +212,9 @@ export function useAdminStartupMutations() {
     setIsLoading(true)
     setError(null)
     
-    const tempId = uuidv4()
+    const startupId = uuidv4()
     const optimisticStartup = {
-      id: tempId,
+      id: startupId,
       ...startupData,
       achievements: 0,
       balance: 0,
@@ -202,15 +226,24 @@ export function useAdminStartupMutations() {
     }
 
     try {
-      const { supabase, uploadLogo } = await import("@/lib/supabaseClient")
+      const { supabase } = await import("@/lib/supabaseClient")
       
-      let logoUrl = null
-      const startupId = uuidv4()
+      let logoPath: string | null = null
       
+      // ✅ НОВАЯ унифицированная система загрузки
       if (startupData.logo instanceof File) {
-        logoUrl = await uploadLogo(startupData.logo, "startups", startupId)
-      } else if (typeof startupData.logo === "string") {
-        logoUrl = startupData.logo
+        console.log('[Startup Mutations] 📤 Загружаю новый логотип для стартапа:', startupId)
+        const uploadResult = await uploadEntityLogo(startupData.logo, "startups", startupId)
+        
+        if (!uploadResult.success) {
+          throw new Error(`Ошибка загрузки логотипа: ${uploadResult.error}`)
+        }
+        
+        logoPath = uploadResult.logoPath || null
+        console.log('[Startup Mutations] ✅ Логотип загружен:', logoPath)
+      } else {
+        // ✅ FALLBACK для существующих URL
+        logoPath = handleExistingLogo(startupData.logo)
       }
       
       const insertData: any = {
@@ -224,7 +257,7 @@ export function useAdminStartupMutations() {
         age_display: startupData.ageDisplay,
       }
       
-      if (logoUrl) insertData.logo_url = logoUrl
+      if (logoPath) insertData.logo_url = logoPath
       
       const { error } = await supabase.from("startups").insert([insertData]).select()
       
@@ -252,13 +285,24 @@ export function useAdminStartupMutations() {
     }
 
     try {
-      const { supabase, uploadLogo } = await import("@/lib/supabaseClient")
+      const { supabase } = await import("@/lib/supabaseClient")
       
-      let logoUrl = null
+      let logoPath: string | null = null
+
+      // ✅ НОВАЯ унифицированная система загрузки
       if (startupData.logo instanceof File) {
-        logoUrl = await uploadLogo(startupData.logo, "startups", id)
-      } else if (typeof startupData.logo === "string") {
-        logoUrl = startupData.logo
+        console.log('[Startup Mutations] 📤 Обновляю логотип для стартапа:', id)
+        const uploadResult = await uploadEntityLogo(startupData.logo, "startups", id)
+        
+        if (!uploadResult.success) {
+          throw new Error(`Ошибка загрузки логотипа: ${uploadResult.error}`)
+        }
+        
+        logoPath = uploadResult.logoPath || null
+        console.log('[Startup Mutations] ✅ Логотип обновлен:', logoPath)
+      } else {
+        // ✅ FALLBACK для существующих URL (не меняем логотип)
+        logoPath = handleExistingLogo(startupData.logo)
       }
       
       const updateData: any = {
@@ -270,7 +314,10 @@ export function useAdminStartupMutations() {
         age_display: startupData.ageDisplay,
       }
       
-      if (logoUrl) updateData.logo_url = logoUrl
+      // ✅ ОБНОВЛЯЕМ логотип только если был загружен новый файл
+      if (logoPath !== null) {
+        updateData.logo_url = logoPath
+      }
       
       const { error } = await supabase.from("startups").update(updateData).eq("id", id).select()
       
@@ -332,11 +379,12 @@ export function useAdminStaffMutations() {
     setIsLoading(true)
     setError(null)
     
-    const tempId = uuidv4()
+    const staffId = uuidv4()
     const optimisticStaff = {
-      id: tempId,
+      id: staffId,
       ...staffData,
-      achievements: 0,
+      balance: 0,
+      nftCount: 0,
       created_at: new Date().toISOString()
     }
 
@@ -345,15 +393,24 @@ export function useAdminStaffMutations() {
     }
 
     try {
-      const { supabase, uploadLogo } = await import("@/lib/supabaseClient")
+      const { supabase } = await import("@/lib/supabaseClient")
       
-      let logoUrl = null
-      const staffId = uuidv4()
+      let logoPath: string | null = null
       
+      // ✅ НОВАЯ унифицированная система загрузки
       if (staffData.logo instanceof File) {
-        logoUrl = await uploadLogo(staffData.logo, "staff", staffId)
-      } else if (typeof staffData.logo === "string") {
-        logoUrl = staffData.logo
+        console.log('[Staff Mutations] 📤 Загружаю новый логотип для участника состава:', staffId)
+        const uploadResult = await uploadEntityLogo(staffData.logo, "staff", staffId)
+        
+        if (!uploadResult.success) {
+          throw new Error(`Ошибка загрузки логотипа: ${uploadResult.error}`)
+        }
+        
+        logoPath = uploadResult.logoPath || null
+        console.log('[Staff Mutations] ✅ Логотип загружен:', logoPath)
+      } else {
+        // ✅ FALLBACK для существующих URL
+        logoPath = handleExistingLogo(staffData.logo)
       }
       
       const insertData: any = {
@@ -361,10 +418,9 @@ export function useAdminStaffMutations() {
         name: staffData.name,
         wallet_address: staffData.walletAddress,
         description: staffData.description,
-        achievements: 0,
       }
       
-      if (logoUrl) insertData.logo_url = logoUrl
+      if (logoPath) insertData.logo_url = logoPath
       
       const { error } = await supabase.from("staff").insert([insertData]).select()
       
@@ -375,7 +431,7 @@ export function useAdminStaffMutations() {
       invalidateAdminCache(['admin-staff', 'admin-dashboard-stats'])
       return { success: true }
     } catch (err: any) {
-      setError(err.message || "Ошибка создания сотрудника")
+      setError(err.message || "Ошибка создания участника состава")
       throw err
     } finally {
       setIsLoading(false)
@@ -392,13 +448,24 @@ export function useAdminStaffMutations() {
     }
 
     try {
-      const { supabase, uploadLogo } = await import("@/lib/supabaseClient")
+      const { supabase } = await import("@/lib/supabaseClient")
       
-      let logoUrl = null
+      let logoPath: string | null = null
+
+      // ✅ НОВАЯ унифицированная система загрузки
       if (staffData.logo instanceof File) {
-        logoUrl = await uploadLogo(staffData.logo, "staff", id)
-      } else if (typeof staffData.logo === "string") {
-        logoUrl = staffData.logo
+        console.log('[Staff Mutations] 📤 Обновляю логотип для участника состава:', id)
+        const uploadResult = await uploadEntityLogo(staffData.logo, "staff", id)
+        
+        if (!uploadResult.success) {
+          throw new Error(`Ошибка загрузки логотипа: ${uploadResult.error}`)
+        }
+        
+        logoPath = uploadResult.logoPath || null
+        console.log('[Staff Mutations] ✅ Логотип обновлен:', logoPath)
+      } else {
+        // ✅ FALLBACK для существующих URL (не меняем логотип)
+        logoPath = handleExistingLogo(staffData.logo)
       }
       
       const updateData: any = {
@@ -407,7 +474,10 @@ export function useAdminStaffMutations() {
         description: staffData.description,
       }
       
-      if (logoUrl) updateData.logo_url = logoUrl
+      // ✅ ОБНОВЛЯЕМ логотип только если был загружен новый файл
+      if (logoPath !== null) {
+        updateData.logo_url = logoPath
+      }
       
       const { error } = await supabase.from("staff").update(updateData).eq("id", id).select()
       
@@ -418,7 +488,7 @@ export function useAdminStaffMutations() {
       invalidateAdminCache(['admin-staff', 'admin-dashboard-stats'])
       return { success: true }
     } catch (err: any) {
-      setError(err.message || "Ошибка обновления сотрудника")
+      setError(err.message || "Ошибка обновления участника состава")
       throw err
     } finally {
       setIsLoading(false)
@@ -444,7 +514,7 @@ export function useAdminStaffMutations() {
       invalidateAdminCache(['admin-staff', 'admin-dashboard-stats'])
       return { success: true }
     } catch (err: any) {
-      setError(err.message || "Ошибка удаления сотрудника")
+      setError(err.message || "Ошибка удаления участника состава")
       throw err
     } finally {
       setIsLoading(false)

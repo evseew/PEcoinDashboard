@@ -198,7 +198,7 @@ export default function NFTUploadPage() {
     console.log('[NFTUpload] Файлов для минтинга:', validFiles.length, 'Всего NFT:', totalNFTs)
     console.log('[NFTUpload] Выбранная коллекция:', selectedCollection)
     
-    let processedCount = 0
+    const processedCount = 0
     
     // Первый (устаревший) цикл обработки validFiles с созданием двойных JSON удалён
     // Оставлен только второй цикл ниже, который формирует корректный единственный JSON

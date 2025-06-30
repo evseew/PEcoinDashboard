@@ -98,9 +98,9 @@ export function EntityListItem({
                     ageDisplay={entity.age_display} 
                   />
                 </div>
-                {!isTeam && (
+                {!isTeam && entity.description && (
                   <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-2 leading-relaxed">
-                    {entity.description || `Участник экосистемы PEcoin стартап`}
+                    {entity.description}
                   </p>
                 )}
               </div>

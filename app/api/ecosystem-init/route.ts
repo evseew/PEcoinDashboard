@@ -1,8 +1,8 @@
 // Автоматическая инициализация динамического кэширования экосистемы
 import { NextRequest, NextResponse } from "next/server"
 
-let isInitialized = false
-let isInitializing = false
+const isInitialized = false
+const isInitializing = false
 
 export async function POST(request: NextRequest) {
   try {

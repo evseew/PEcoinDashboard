@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { EntityTable } from "@/components/admin/entity-table"
-import { supabase, uploadLogo } from "@/lib/supabaseClient"
+import { supabase } from "@/lib/supabaseClient"
+import { uploadEntityLogo, handleExistingLogo } from "@/lib/upload-client"
 import { v4 as uuidv4 } from "uuid"
 
 interface Team {
@@ -42,16 +43,29 @@ export default function TeamsPage() {
     fetchTeams()
   }, [refreshKey])
 
-  // Создание команды
+  // ✅ СОЗДАНИЕ команды с унифицированной загрузкой логотипа
   const handleCreateTeam = async (data: any) => {
     try {
-      let logoUrl = null
       const teamId = uuidv4()
+      let logoPath: string | null = null
+
+      // ✅ ОБРАБОТКА загрузки логотипа
       if (data.logo instanceof File) {
-        logoUrl = await uploadLogo(data.logo, "teams", teamId)
-      } else if (typeof data.logo === "string") {
-        logoUrl = data.logo
+        console.log('[Teams Admin] 📤 Загружаю новый логотип для команды:', teamId)
+        const uploadResult = await uploadEntityLogo(data.logo, "teams", teamId)
+        
+        if (!uploadResult.success) {
+          setError(`Ошибка загрузки логотипа: ${uploadResult.error}`)
+          return
+        }
+        
+        logoPath = uploadResult.logoPath || null
+        console.log('[Teams Admin] ✅ Логотип загружен:', logoPath)
+      } else {
+        // ✅ FALLBACK для существующих URL
+        logoPath = handleExistingLogo(data.logo)
       }
+
       const insertData: any = {
         id: teamId,
         name: data.name,
@@ -62,29 +76,47 @@ export default function TeamsPage() {
         age_range_max: data.ageRangeMax,
         age_display: data.ageDisplay,
       }
-      if (logoUrl) insertData.logo_url = logoUrl
+      
+      if (logoPath) insertData.logo_url = logoPath
+
       const { error } = await supabase.from("teams").insert([insertData]).select()
+      
       if (error) {
-        console.error("Supabase insert error:", error)
-        setError(error.message || JSON.stringify(error))
+        console.error('[Teams Admin] ❌ Ошибка Supabase insert:', error)
+        setError(`Ошибка создания команды: ${error.message}`)
         return
       }
+
+      console.log('[Teams Admin] ✅ Команда успешно создана:', teamId)
       fetchTeams()
     } catch (e: any) {
-      console.error("Create team error:", e)
-      setError(e.message || JSON.stringify(e))
+      console.error('[Teams Admin] 💥 Критическая ошибка создания команды:', e)
+      setError(`Критическая ошибка: ${e.message}`)
     }
   }
 
-  // Обновление команды
+  // ✅ ОБНОВЛЕНИЕ команды с унифицированной загрузкой логотипа
   const handleUpdateTeam = async (id: string, data: any) => {
     try {
-      let logoUrl = null
+      let logoPath: string | null = null
+
+      // ✅ ОБРАБОТКА загрузки логотипа
       if (data.logo instanceof File) {
-        logoUrl = await uploadLogo(data.logo, "teams", id)
-      } else if (typeof data.logo === "string") {
-        logoUrl = data.logo
+        console.log('[Teams Admin] 📤 Обновляю логотип для команды:', id)
+        const uploadResult = await uploadEntityLogo(data.logo, "teams", id)
+        
+        if (!uploadResult.success) {
+          setError(`Ошибка загрузки логотипа: ${uploadResult.error}`)
+          return
+        }
+        
+        logoPath = uploadResult.logoPath || null
+        console.log('[Teams Admin] ✅ Логотип обновлен:', logoPath)
+      } else {
+        // ✅ FALLBACK для существующих URL (не меняем логотип)
+        logoPath = handleExistingLogo(data.logo)
       }
+
       const updateData: any = {
         name: data.name,
         wallet_address: data.walletAddress,
@@ -93,17 +125,25 @@ export default function TeamsPage() {
         age_range_max: data.ageRangeMax,
         age_display: data.ageDisplay,
       }
-      if (logoUrl) updateData.logo_url = logoUrl
+      
+      // ✅ ОБНОВЛЯЕМ логотип только если был загружен новый файл
+      if (logoPath !== null) {
+        updateData.logo_url = logoPath
+      }
+
       const { error } = await supabase.from("teams").update(updateData).eq("id", id).select()
+      
       if (error) {
-        console.error("Supabase update error:", error)
-        setError(error.message || JSON.stringify(error))
+        console.error('[Teams Admin] ❌ Ошибка Supabase update:', error)
+        setError(`Ошибка обновления команды: ${error.message}`)
         return
       }
+
+      console.log('[Teams Admin] ✅ Команда успешно обновлена:', id)
       fetchTeams()
     } catch (e: any) {
-      console.error("Update team error:", e)
-      setError(e.message || JSON.stringify(e))
+      console.error('[Teams Admin] 💥 Критическая ошибка обновления команды:', e)
+      setError(`Критическая ошибка: ${e.message}`)
     }
   }
 

@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { EntityTable } from "@/components/admin/entity-table"
-import { supabase, uploadLogo } from "@/lib/supabaseClient"
+import { supabase } from "@/lib/supabaseClient"
+import { uploadEntityLogo, handleExistingLogo } from "@/lib/upload-client"
 import { v4 as uuidv4 } from "uuid"
 
 interface Startup {
@@ -51,16 +52,29 @@ export default function StartupsPage() {
     fetchStartups()
   }, [refreshKey])
 
-  // Создание стартапа
+  // ✅ СОЗДАНИЕ стартапа с унифицированной загрузкой логотипа
   const handleCreateStartup = async (data: any) => {
     try {
-      let logoUrl = null
       const startupId = uuidv4()
+      let logoPath: string | null = null
+
+      // ✅ ОБРАБОТКА загрузки логотипа
       if (data.logo instanceof File) {
-        logoUrl = await uploadLogo(data.logo, "startups", startupId)
-      } else if (typeof data.logo === "string") {
-        logoUrl = data.logo
+        console.log('[Startups Admin] 📤 Загружаю новый логотип для стартапа:', startupId)
+        const uploadResult = await uploadEntityLogo(data.logo, "startups", startupId)
+        
+        if (!uploadResult.success) {
+          setError(`Ошибка загрузки логотипа: ${uploadResult.error}`)
+          return
+        }
+        
+        logoPath = uploadResult.logoPath || null
+        console.log('[Startups Admin] ✅ Логотип загружен:', logoPath)
+      } else {
+        // ✅ FALLBACK для существующих URL
+        logoPath = handleExistingLogo(data.logo)
       }
+
       const insertData: any = {
         id: startupId,
         name: data.name,
@@ -71,29 +85,47 @@ export default function StartupsPage() {
         age_range_max: data.ageRangeMax,
         age_display: data.ageDisplay,
       }
-      if (logoUrl) insertData.logo_url = logoUrl
+      
+      if (logoPath) insertData.logo_url = logoPath
+
       const { error } = await supabase.from("startups").insert([insertData]).select()
+      
       if (error) {
-        console.error("Supabase insert error:", error)
-        setError(error.message || JSON.stringify(error))
+        console.error('[Startups Admin] ❌ Ошибка Supabase insert:', error)
+        setError(`Ошибка создания стартапа: ${error.message}`)
         return
       }
+
+      console.log('[Startups Admin] ✅ Стартап успешно создан:', startupId)
       fetchStartups()
     } catch (e: any) {
-      console.error("Create startup error:", e)
-      setError(e.message || JSON.stringify(e))
+      console.error('[Startups Admin] 💥 Критическая ошибка создания стартапа:', e)
+      setError(`Критическая ошибка: ${e.message}`)
     }
   }
 
-  // Обновление стартапа
+  // ✅ ОБНОВЛЕНИЕ стартапа с унифицированной загрузкой логотипа
   const handleUpdateStartup = async (id: string, data: any) => {
     try {
-      let logoUrl = null
+      let logoPath: string | null = null
+
+      // ✅ ОБРАБОТКА загрузки логотипа
       if (data.logo instanceof File) {
-        logoUrl = await uploadLogo(data.logo, "startups", id)
-      } else if (typeof data.logo === "string") {
-        logoUrl = data.logo
+        console.log('[Startups Admin] 📤 Обновляю логотип для стартапа:', id)
+        const uploadResult = await uploadEntityLogo(data.logo, "startups", id)
+        
+        if (!uploadResult.success) {
+          setError(`Ошибка загрузки логотипа: ${uploadResult.error}`)
+          return
+        }
+        
+        logoPath = uploadResult.logoPath || null
+        console.log('[Startups Admin] ✅ Логотип обновлен:', logoPath)
+      } else {
+        // ✅ FALLBACK для существующих URL (не меняем логотип)
+        logoPath = handleExistingLogo(data.logo)
       }
+
       const updateData: any = {
         name: data.name,
         wallet_address: data.walletAddress,
@@ -102,17 +134,25 @@ export default function StartupsPage() {
         age_range_max: data.ageRangeMax,
         age_display: data.ageDisplay,
       }
-      if (logoUrl) updateData.logo_url = logoUrl
+      
+      // ✅ ОБНОВЛЯЕМ логотип только если был загружен новый файл
+      if (logoPath !== null) {
+        updateData.logo_url = logoPath
+      }
+
       const { error } = await supabase.from("startups").update(updateData).eq("id", id).select()
+      
       if (error) {
-        console.error("Supabase update error:", error)
-        setError(error.message || JSON.stringify(error))
+        console.error('[Startups Admin] ❌ Ошибка Supabase update:', error)
+        setError(`Ошибка обновления стартапа: ${error.message}`)
         return
       }
+
+      console.log('[Startups Admin] ✅ Стартап успешно обновлен:', id)
       fetchStartups()
     } catch (e: any) {
-      console.error("Update startup error:", e)
-      setError(e.message || JSON.stringify(e))
+      console.error('[Startups Admin] 💥 Критическая ошибка обновления стартапа:', e)
+      setError(`Критическая ошибка: ${e.message}`)
     }
   }
 

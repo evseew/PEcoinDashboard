@@ -139,6 +139,14 @@ class SignedUrlCache {
   }
 
   /**
+   * Инвалидировать конкретный ключ из кэша
+   */
+  invalidate(storageKey: string): void {
+    this.cache.delete(storageKey)
+    console.log(`[SignedUrlCache] 🗑️ Инвалидирован ключ: ${storageKey}`)
+  }
+
+  /**
    * Очистить весь кэш
    */
   clear(): void {

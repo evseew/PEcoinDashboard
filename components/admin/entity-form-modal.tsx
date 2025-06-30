@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Upload, AlertCircle } from "lucide-react"
 import { AgeRangeSelector } from "@/components/age-range-selector"
+import { signedUrlCache } from "@/lib/signed-url-cache"
 
 interface EntityFormModalProps {
   isOpen: boolean
@@ -21,7 +22,7 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
   const [walletAddress, setWalletAddress] = useState(entity?.walletAddress || "")
   const [description, setDescription] = useState(entity?.description || "")
   const [logo, setLogo] = useState<File | null>(null)
-  const [logoPreview, setLogoPreview] = useState<string | null>(entity?.logo || null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [ageRange, setAgeRange] = useState({
     min: entity?.ageRangeMin || 8,
     max: entity?.ageRangeMax || 10,
@@ -32,16 +33,35 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    async function loadExistingLogo() {
+      if (entity?.logo && typeof entity.logo === 'string') {
+        console.log('[EntityFormModal] 🔗 Получаю signed URL для:', entity.logo)
+        const signedUrl = await signedUrlCache.getSignedUrl(entity.logo)
+        if (signedUrl) {
+          setLogoPreview(signedUrl)
+          console.log('[EntityFormModal] ✅ Signed URL получен')
+        } else {
+          console.warn('[EntityFormModal] ⚠️ Не удалось получить signed URL для:', entity.logo)
+          setLogoPreview(null)
+        }
+      } else {
+        setLogoPreview(null)
+      }
+    }
+
     setName(entity?.name || "")
     setWalletAddress(entity?.walletAddress || "")
     setDescription(entity?.description || "")
     setLogo(null)
-    setLogoPreview(entity?.logo || null)
     setAgeRange({
       min: entity?.ageRangeMin || 8,
       max: entity?.ageRangeMax || 10,
       display: entity?.ageDisplay || "8-10 y.o."
     })
+    
+    if (isOpen) {
+      loadExistingLogo()
+    }
   }, [entity, isOpen])
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,7 +107,7 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
         name,
         walletAddress,
         description,
-        logo: logo || logoPreview,
+        logo: logo || entity?.logo,
         ageRangeMin: ageRange.min,
         ageRangeMax: ageRange.max,
         ageDisplay: ageRange.display,

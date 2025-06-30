@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { EntityTable } from "@/components/admin/entity-table"
-import { supabase, uploadLogo } from "@/lib/supabaseClient"
+import { supabase } from "@/lib/supabaseClient"
+import { uploadEntityLogo, handleExistingLogo } from "@/lib/upload-client"
 import { v4 as uuidv4 } from "uuid"
 
 interface Staff {
@@ -161,59 +162,100 @@ export default function StaffPage() {
     }
   }, [staff])
 
+  // ✅ СОЗДАНИЕ участника состава с унифицированной загрузкой логотипа
   const handleCreateStaff = async (data: any) => {
     try {
-      let logoUrl = null
       const staffId = uuidv4()
+      let logoPath: string | null = null
+
+      // ✅ ОБРАБОТКА загрузки логотипа
       if (data.logo instanceof File) {
-        logoUrl = await uploadLogo(data.logo, "staff", staffId)
-      } else if (typeof data.logo === "string") {
-        logoUrl = data.logo
+        console.log('[Staff Admin] 📤 Загружаю новый логотип для участника состава:', staffId)
+        const uploadResult = await uploadEntityLogo(data.logo, "staff", staffId)
+        
+        if (!uploadResult.success) {
+          setError(`Ошибка загрузки логотипа: ${uploadResult.error}`)
+          return
+        }
+        
+        logoPath = uploadResult.logoPath || null
+        console.log('[Staff Admin] ✅ Логотип загружен:', logoPath)
+      } else {
+        // ✅ FALLBACK для существующих URL
+        logoPath = handleExistingLogo(data.logo)
       }
+
       const insertData: any = {
         id: staffId,
         name: data.name,
         wallet_address: data.walletAddress,
         description: data.description,
       }
-      if (logoUrl) insertData.logo_url = logoUrl
+      
+      if (logoPath) insertData.logo_url = logoPath
+
       const { error } = await supabase.from("staff").insert([insertData]).select()
+      
       if (error) {
-        console.error("Supabase insert error:", error)
-        setError(error.message || JSON.stringify(error))
+        console.error('[Staff Admin] ❌ Ошибка Supabase insert:', error)
+        setError(`Ошибка создания участника состава: ${error.message}`)
         return
       }
+
+      console.log('[Staff Admin] ✅ Участник состава успешно создан:', staffId)
       fetchStaff()
     } catch (e: any) {
-      console.error("Create staff error:", e)
-      setError(e.message || JSON.stringify(e))
+      console.error('[Staff Admin] 💥 Критическая ошибка создания участника состава:', e)
+      setError(`Критическая ошибка: ${e.message}`)
     }
   }
 
+  // ✅ ОБНОВЛЕНИЕ участника состава с унифицированной загрузкой логотипа
   const handleUpdateStaff = async (id: string, data: any) => {
     try {
-      let logoUrl = null
+      let logoPath: string | null = null
+
+      // ✅ ОБРАБОТКА загрузки логотипа
       if (data.logo instanceof File) {
-        logoUrl = await uploadLogo(data.logo, "staff", id)
-      } else if (typeof data.logo === "string") {
-        logoUrl = data.logo
+        console.log('[Staff Admin] 📤 Обновляю логотип для участника состава:', id)
+        const uploadResult = await uploadEntityLogo(data.logo, "staff", id)
+        
+        if (!uploadResult.success) {
+          setError(`Ошибка загрузки логотипа: ${uploadResult.error}`)
+          return
+        }
+        
+        logoPath = uploadResult.logoPath || null
+        console.log('[Staff Admin] ✅ Логотип обновлен:', logoPath)
+      } else {
+        // ✅ FALLBACK для существующих URL (не меняем логотип)
+        logoPath = handleExistingLogo(data.logo)
       }
+
       const updateData: any = {
         name: data.name,
         wallet_address: data.walletAddress,
         description: data.description,
       }
-      if (logoUrl) updateData.logo_url = logoUrl
+      
+      // ✅ ОБНОВЛЯЕМ логотип только если был загружен новый файл
+      if (logoPath !== null) {
+        updateData.logo_url = logoPath
+      }
+
       const { error } = await supabase.from("staff").update(updateData).eq("id", id).select()
+      
       if (error) {
-        console.error("Supabase update error:", error)
-        setError(error.message || JSON.stringify(error))
+        console.error('[Staff Admin] ❌ Ошибка Supabase update:', error)
+        setError(`Ошибка обновления участника состава: ${error.message}`)
         return
       }
+
+      console.log('[Staff Admin] ✅ Участник состава успешно обновлен:', id)
       fetchStaff()
     } catch (e: any) {
-      console.error("Update staff error:", e)
-      setError(e.message || JSON.stringify(e))
+      console.error('[Staff Admin] 💥 Критическая ошибка обновления участника состава:', e)
+      setError(`Критическая ошибка: ${e.message}`)
     }
   }
 
