@@ -410,35 +410,43 @@ export default function NFTUploadPage() {
           } : null)
           
           try {
-            console.log('[NFTUpload] Вызываем mintSingle для:', formattedNftName)  // 🔥 ОБНОВЛЕНО
+            console.log('[NFTUpload] Вызываем mintSingle для:', formattedNftName)
             console.log('[NFTUpload] Данные для минтинга:', {
-              collectionId: selectedCollection,
+              collection: selectedCollectionData,
               recipient: file.recipient,
               metadata: {
-                name: formattedNftName,  // 🔥 ИСПРАВЛЕНО: используем Phantom-совместимое название
-                uri: metadataUri, // ← ИСПРАВЛЕНО: используем URI метаданных, а не изображения
-                symbol: selectedCollectionData?.symbol || "cNFT",  // ✅ ИСПРАВЛЕНО: динамический символ
-                description: `NFT from ${selectedCollectionData?.name || 'PEcamp'} collection: ${nftName}`  // ✅ ИСПРАВЛЕНО: динамическое имя
+                name: formattedNftName,
+                uri: metadataUri,
+                symbol: selectedCollectionData?.symbol || "cNFT",
+                description: `NFT from ${selectedCollectionData?.name || 'PEcamp'} collection: ${nftName}`
               }
             })
             
-            // Маппинг между Supabase коллекциями и бэкенд коллекциями
-            const collectionMapping = {
-              '54333c2d-dd85-423d-bddd-aa0b1d903a08': 'pe-stickers', // PE Stickers
-              // Добавим другие коллекции при необходимости
+            // 🔄 НОВАЯ АРХИТЕКТУРА: Передаем полные данные коллекции
+            if (!selectedCollectionData) {
+              throw new Error('Коллекция не выбрана или не найдена')
             }
-            
-            const backendCollectionId = collectionMapping[selectedCollection as keyof typeof collectionMapping] || 'pe-stickers'
-            
-            console.log('[NFTUpload] Маппинг коллекции:', selectedCollection, '→', backendCollectionId)
+
+            // Подготавливаем объект коллекции с необходимыми полями
+            const collectionForMinting = {
+              id: selectedCollectionData.id,
+              name: selectedCollectionData.name,
+              symbol: selectedCollectionData.symbol || 'cNFT',
+              treeAddress: selectedCollectionData.tree_address,
+              collectionAddress: selectedCollectionData.collection_address,
+              creatorAddress: selectedCollectionData.creator_address,
+              sellerFeeBasisPoints: 0 // Можно сделать настраиваемым
+            }
+
+            console.log('[NFTUpload] 🔄 Объект коллекции для Backend:', collectionForMinting)
             
             const mintResult = await mintSingle({
-              collectionId: backendCollectionId,
+              collection: collectionForMinting, // 🔄 ИЗМЕНЕНИЕ: передаем объект коллекции
               recipient: file.recipient,
               metadata: {
-                name: formattedNftName,  // 🔥 ИСПРАВЛЕНО: используем Phantom-совместимое название
-                uri: metadataUri,  // ✅ URI на JSON метаданные
-                symbol: selectedCollectionData?.symbol || "cNFT",  // ✅ ИСПРАВЛЕНО: динамический символ
+                name: formattedNftName,
+                uri: metadataUri,
+                symbol: selectedCollectionData?.symbol || "cNFT",
                 description: `NFT from ${selectedCollectionData?.name || 'PEcamp'} collection: ${nftName}`,
                 // ✅ КРИТИЧЕСКОЕ: Передаем creators для правильного минтинга
                 creators: [

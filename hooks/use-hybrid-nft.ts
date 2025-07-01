@@ -21,7 +21,15 @@ export function useHybridNft() {
   
   // Минтинг через гибридный API
   const mintSingle = useCallback(async (mintData: {
-    collectionId: string
+    collection: {
+      id: string
+      name: string
+      symbol: string
+      treeAddress: string
+      collectionAddress: string
+      creatorAddress?: string
+      sellerFeeBasisPoints?: number
+    }
     recipient: string
     metadata: {
       name: string

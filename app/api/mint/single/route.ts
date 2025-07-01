@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { collectionId, recipient, metadata } = await request.json()
+    const { collection, recipient, metadata } = await request.json()
     
     console.log('[Mint Single] Получен запрос на минтинг:', {
-      collectionId,
+      collection: collection ? {
+        id: collection.id,
+        name: collection.name,
+        treeAddress: collection.treeAddress
+      } : null,
       recipient,
       metadata: {
         name: metadata?.name,
@@ -16,10 +20,10 @@ export async function POST(request: NextRequest) {
     })
 
     // Валидация входных данных
-    if (!collectionId || !recipient || !metadata) {
+    if (!collection || !collection.id || !recipient || !metadata) {
       return NextResponse.json({
         success: false,
-        error: 'Отсутствуют обязательные поля: collectionId, recipient, metadata'
+        error: 'Отсутствуют обязательные поля: collection (с id), recipient, metadata'
       }, { status: 400 })
     }
 
@@ -137,10 +141,10 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': externalApiKey
+          'x-api-key': externalApiKey
         },
         body: JSON.stringify({
-          collectionId,
+          collection,
           recipient,
           metadata
         }),
