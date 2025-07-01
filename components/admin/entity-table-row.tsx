@@ -48,6 +48,18 @@ export function EntityTableRow({
     }
     fetchLogoUrl()
   }, [entity.logo])
+  
+  // ✅ Дополнительное обновление при изменении entity (для случаев загрузки новых логотипов)
+  useEffect(() => {
+    async function refreshLogoUrl() {
+      if (entity.logo) {
+        // Принудительно получаем новый signed URL без кэша
+        const url = await signedUrlCache.getSignedUrl(entity.logo)
+        setLogoUrl(url)
+      }
+    }
+    refreshLogoUrl()
+  }, [entity])
 
   return (
     <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">

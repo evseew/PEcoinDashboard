@@ -97,7 +97,7 @@ export default function StartupsPage() {
       }
 
       console.log('[Startups Admin] ✅ Стартап успешно создан:', startupId)
-      fetchStartups()
+      await fetchStartups() // ✅ Ждем обновления данных перед закрытием модального окна
     } catch (e: any) {
       console.error('[Startups Admin] 💥 Критическая ошибка создания стартапа:', e)
       setError(`Критическая ошибка: ${e.message}`)
@@ -149,7 +149,7 @@ export default function StartupsPage() {
       }
 
       console.log('[Startups Admin] ✅ Стартап успешно обновлен:', id)
-      fetchStartups()
+      await fetchStartups() // ✅ Ждем обновления данных перед закрытием модального окна
     } catch (e: any) {
       console.error('[Startups Admin] 💥 Критическая ошибка обновления стартапа:', e)
       setError(`Критическая ошибка: ${e.message}`)
