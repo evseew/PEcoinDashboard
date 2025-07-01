@@ -34,7 +34,7 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
 
   // ✅ НОРМАЛИЗАЦИЯ wallet address для iPhone (убирает проблемные символы)
   const normalizeWalletAddressForValidation = (address: string): string => {
-    if (typeof window === 'undefined') return address
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return address
     
     // Детекция iPhone/iOS
     const isiPhone = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
@@ -88,7 +88,7 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
+    if (file && typeof FileReader !== 'undefined') {
       setLogo(file)
       const reader = new FileReader()
       reader.onloadend = () => {

@@ -9,11 +9,11 @@ interface UploadLogoResult {
   error?: string
 }
 
-// ✅ ДЕТЕКТОР iPhone/iOS
+// ✅ ДЕТЕКТОР iPhone/iOS - БЕЗОПАСНЫЙ для SSR
 function isiPhone(): boolean {
-  if (typeof window === 'undefined') return false
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false
   
-  const userAgent = window.navigator.userAgent
+  const userAgent = navigator.userAgent
   return /iPhone|iPad|iPod/.test(userAgent) || 
          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) // iPad Pro
 }
@@ -117,8 +117,14 @@ async function uploadEntityLogoiPhone(
   }
 }
 
-// ✅ СЖАТИЕ изображения для iPhone
+// ✅ СЖАТИЕ изображения для iPhone - БЕЗОПАСНОЕ для SSR
 async function compressImageForIPhone(file: File): Promise<File> {
+  // ✅ Проверка browser environment
+  if (typeof document === 'undefined') {
+    console.warn('[iPhone Upload] ⚠️ Document недоступен на сервере, возвращаю оригинал')
+    return file
+  }
+  
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
