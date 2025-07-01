@@ -74,7 +74,7 @@ export function EntityListItem({
         }}
       >
         <div className={`camp-card hover:border-opacity-100 transition-all duration-300 ${borderColor} group-hover:shadow-xl group-hover:shadow-${isTeam ? '[#E63946]' : '[#6ABECD]'}/10`}>
-          <div className="flex items-center justify-between p-3 sm:p-6">
+          <div className="flex items-center p-3 sm:p-6">
             <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
               <div className="relative flex-shrink-0">
                 {entity.logo ? (
@@ -97,14 +97,14 @@ export function EntityListItem({
                 )}
               </div>
 
-              <div className="flex-1 min-w-0 max-w-[calc(100%-140px)] sm:max-w-[calc(100%-160px)]">
-                <div className="flex items-center gap-2 mb-1">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
                   <h3 className="text-sm sm:text-base md:text-lg font-display font-bold text-gray-900 dark:text-gray-100 truncate group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:bg-clip-text group-hover:from-[var(--primary)] group-hover:to-[var(--secondary)] transition-all duration-300"
                       style={{ '--primary': primaryColor, '--secondary': secondaryColor } as any}
                       title={entity.name}>
                     {entity.name}
                   </h3>
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 self-start sm:self-auto">
                     <AgeDisplay 
                       ageRangeMin={entity.age_range_min} 
                       ageRangeMax={entity.age_range_max} 
@@ -120,18 +120,16 @@ export function EntityListItem({
               </div>
             </div>
 
-            <div className="flex items-center space-x-1 sm:space-x-3 ml-2 sm:ml-4 flex-shrink-0">
-              <div className="text-right max-w-[80px] sm:max-w-[120px]">
-                <div className="flex items-center justify-end">
-                  <div className="w-3 h-3 sm:w-5 sm:h-5 mr-1">
-                    <img src="/images/pecoin.png" alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
-                  </div>
-                  <div 
-                    className="text-xs sm:text-sm md:text-base font-display font-bold text-gray-900 dark:text-gray-100 tabular-nums truncate"
-                    title={`${balance.toLocaleString()} PEcoin`}
-                  >
-                    {formatLargeNumber(balance)}
-                  </div>
+            <div className="flex items-center gap-1 sm:gap-2 ml-auto pl-2 sm:pl-4 flex-shrink-0">
+              <div className="flex items-center gap-0.5 sm:gap-1">
+                <div className="w-3 h-3 sm:w-5 sm:h-5">
+                  <img src="/images/pecoin.png" alt="PEcoin" className="w-full h-full object-cover rounded-full bg-transparent" />
+                </div>
+                <div 
+                  className="text-xs sm:text-sm md:text-base font-display font-bold text-gray-900 dark:text-gray-100 tabular-nums"
+                  title={`${balance.toLocaleString()} PEcoin`}
+                >
+                  {formatLargeNumber(balance)}
                 </div>
               </div>
 
