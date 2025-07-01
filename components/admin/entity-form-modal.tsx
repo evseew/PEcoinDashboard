@@ -143,7 +143,6 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
       if (logo instanceof File) {
         console.log('[EntityFormModal] 🔄 Принудительное обновление кэша логотипа')
         // Инвалидируем кэш для немедленного обновления
-        const { signedUrlCache } = await import('@/lib/signed-url-cache')
         if (entity?.logo) {
           signedUrlCache.invalidate(entity.logo)
         }
