@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`${externalApiUrl}/api/upload/image`, {
       method: 'POST',
       headers: {
-        'X-API-Key': externalApiKey
+        'x-api-key': externalApiKey
       },
       body: externalFormData,
       signal: AbortSignal.timeout(60000) // 60 секунд для больших файлов

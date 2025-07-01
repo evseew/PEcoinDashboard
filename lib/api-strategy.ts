@@ -10,15 +10,16 @@ interface ApiConfig {
 const API_ROUTING = {
   // Быстрые операции - через внутренние API
   getCollections: { source: 'internal' as ApiSource, fallback: true },
-  uploadMetadata: { source: 'internal' as ApiSource },
+  getWalletNFTs: { source: 'internal' as ApiSource },
   
   // Реальный минтинг через external API с fallback на internal
   mintSingle: { source: 'external' as ApiSource, fallback: true },
   mintBatch: { source: 'external' as ApiSource },
-  processImages: { source: 'external' as ApiSource },
   
-  // ✅ ИСПРАВЛЕНО: Используем надежный internal API для NFT
-  getWalletNFTs: { source: 'internal' as ApiSource }
+  // Upload операции через internal API (которые проксируют к external)
+  uploadImage: { source: 'internal' as ApiSource, fallback: false },
+  uploadMetadata: { source: 'internal' as ApiSource, fallback: false },
+  processImages: { source: 'external' as ApiSource }
 }
 
 class HybridApiClient {
@@ -50,12 +51,19 @@ class HybridApiClient {
   }
 
   private async internalRequest(endpoint: string, options: RequestInit): Promise<any> {
+    // Подготавливаем заголовки - для FormData не устанавливаем Content-Type
+    const headers: Record<string, string> = {
+      ...options.headers as Record<string, string>
+    }
+    
+    // Добавляем Content-Type только если это не FormData
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json'
+    }
+    
     const response = await fetch(`${this.internalBaseUrl}${endpoint}`, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      }
+      headers
     })
     
     // ✅ КРИТИЧЕСКАЯ ПРОВЕРКА: Проверяем успешность запроса
@@ -72,13 +80,20 @@ class HybridApiClient {
       throw new Error('External API URL not configured')
     }
     
+    // Подготавливаем заголовки - для FormData не устанавливаем Content-Type
+    const headers: Record<string, string> = {
+      'x-api-key': this.externalApiKey,
+      ...options.headers as Record<string, string>
+    }
+    
+    // Добавляем Content-Type только если это не FormData
+    if (!(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json'
+    }
+    
     const response = await fetch(`${this.externalBaseUrl}${endpoint}`, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.externalApiKey,
-        ...options.headers
-      }
+      headers
     })
     
     // ✅ ДОБАВЛЯЕМ ПРОВЕРКУ И ДЛЯ EXTERNAL API
@@ -142,14 +157,15 @@ class HybridApiClient {
     return this.request('/upload/image', {
       method: 'POST',
       body: formData
-    }, { source: 'external', fallback: false }) // Загрузка только через external API
+      // Для FormData не устанавливаем заголовки - браузер сделает это автоматически
+    }, API_ROUTING.uploadImage)
   }
 
   async uploadMetadata(metadata: any, filename?: string) {
     return this.request('/upload/metadata', {
       method: 'POST',
       body: JSON.stringify({ metadata, filename })
-    }, { source: 'external', fallback: false }) // Метаданные только через external API
+    }, API_ROUTING.uploadMetadata)
   }
 }
 

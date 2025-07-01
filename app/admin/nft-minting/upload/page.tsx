@@ -35,6 +35,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { validateNFTMetadata, logValidationResults, createValidNFTMetadata, NFTMetadata } from '@/lib/nft-validation'
+import { apiClient } from '@/lib/api-strategy'
 
 interface UploadedFile {
   id: string
@@ -257,24 +258,14 @@ export default function NFTUploadPage() {
             current: `📤 Uploading image ${nftName} to IPFS...`
           } : null)
           
-          // Загрузка изображения на IPFS через external API (ИСПРАВЛЕНО)
+          // Загрузка изображения на IPFS через apiClient
           let imageUri = '';
           let imageGatewayUrl = '';
           let imageCid = '';
           try {
-            const formData = new FormData()
-            formData.append('image', file.file)  // ✅ ИСПРАВЛЕНО: правильное поле для /api/upload/image
-            formData.append('name', nftName)     // ✅ ИСПРАВЛЕНО: добавляем имя файла
+            console.log('[NFTUpload] Загружаем изображение через apiClient.uploadImage()...')
             
-            const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_EXTERNAL_API_URL}/api/upload/image`, {
-              method: 'POST',
-              headers: {
-                'x-api-key': process.env.NEXT_PUBLIC_EXTERNAL_API_KEY || ''
-              },
-              body: formData
-            })
-            
-            const uploadResult = await uploadResponse.json()
+            const uploadResult = await apiClient.uploadImage(file.file, nftName)
             
             if (uploadResult.success && uploadResult.data) {
               imageUri = uploadResult.data.gatewayUrl || uploadResult.data.ipfsUri  // 🔥 КРИТИЧЕСКОЕ: используем Gateway URL для Phantom!
@@ -360,20 +351,13 @@ export default function NFTUploadPage() {
               collection: selectedCollectionData?.name
             })
 
-            // Загружаем JSON метаданные на IPFS
-            const metadataResponse = await fetch(`${process.env.NEXT_PUBLIC_EXTERNAL_API_URL}/api/upload/metadata`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': process.env.NEXT_PUBLIC_EXTERNAL_API_KEY || ''
-              },
-              body: JSON.stringify({
-                metadata: nftMetadata,
-                filename: `${nftName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-metadata.json`
-              })
-            })
-
-            const metadataResult = await metadataResponse.json()
+            // Загружаем JSON метаданные на IPFS через apiClient
+            console.log('[NFTUpload] Загружаем метаданные через apiClient.uploadMetadata()...')
+            
+            const metadataResult = await apiClient.uploadMetadata(
+              nftMetadata, 
+              `${nftName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-metadata.json`
+            )
 
             if (metadataResult.success) {
               metadataUri = metadataResult.data.gatewayUrl || metadataResult.data.ipfsUri
@@ -433,7 +417,7 @@ export default function NFTUploadPage() {
               name: selectedCollectionData.name,
               symbol: selectedCollectionData.symbol || 'cNFT',
               treeAddress: selectedCollectionData.tree_address,
-              collectionAddress: selectedCollectionData.collection_address,
+              collectionAddress: selectedCollectionData.collection_address || selectedCollectionData.tree_address, // fallback to tree_address
               creatorAddress: selectedCollectionData.creator_address,
               sellerFeeBasisPoints: 0 // Можно сделать настраиваемым
             }

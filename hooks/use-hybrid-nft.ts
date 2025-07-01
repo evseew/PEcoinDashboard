@@ -84,7 +84,7 @@ export function useHybridNft() {
       try {
         const statusResponse = await fetch(`${process.env.NEXT_PUBLIC_EXTERNAL_API_URL}/api/mint/status/${operationId}`, {
           headers: {
-            'X-API-Key': process.env.NEXT_PUBLIC_EXTERNAL_API_KEY || ''
+            'x-api-key': process.env.NEXT_PUBLIC_EXTERNAL_API_KEY || ''
           }
         })
         
