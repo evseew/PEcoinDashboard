@@ -32,6 +32,28 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // ✅ НОРМАЛИЗАЦИЯ wallet address для iPhone (убирает проблемные символы)
+  const normalizeWalletAddressForValidation = (address: string): string => {
+    if (typeof window === 'undefined') return address
+    
+    // Детекция iPhone/iOS
+    const isiPhone = /iPhone|iPad|iPod/.test(navigator.userAgent) || 
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    
+    if (!isiPhone) return address // Для не-iPhone устройств не меняем
+    
+    // ✅ iPhone-специфичная очистка
+    return address
+      .replace(/\u00A0/g, '') // Неразрывный пробел (часто добавляется iPhone)
+      .replace(/\u200B/g, '') // Zero-width space
+      .replace(/\u200C/g, '') // Zero-width non-joiner  
+      .replace(/\u200D/g, '') // Zero-width joiner
+      .replace(/\uFEFF/g, '') // Byte order mark
+      .replace(/[\r\n\t]/g, '') // Переносы строк и табы
+      .replace(/\s+/g, '') // Все остальные пробелы
+      .trim()
+  }
+
   useEffect(() => {
     async function loadExistingLogo() {
       if (entity?.logo && typeof entity.logo === 'string') {
@@ -85,8 +107,12 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
 
     if (!walletAddress.trim()) {
       newErrors.walletAddress = "Wallet address is required"
-    } else if (!/^[A-HJ-NP-Za-km-z1-9]{32,44}$/.test(walletAddress)) {
-      newErrors.walletAddress = "Invalid Solana wallet address format"
+    } else {
+      const normalizedAddress = normalizeWalletAddressForValidation(walletAddress)
+      
+      if (!/^[A-HJ-NP-Za-km-z1-9]{32,44}$/.test(normalizedAddress)) {
+        newErrors.walletAddress = "Invalid Solana wallet address format"
+      }
     }
 
     setErrors(newErrors)
@@ -294,3 +320,5 @@ export function EntityFormModal({ isOpen, onClose, onSave, title, entity, entity
     </AnimatePresence>
   )
 }
+
+

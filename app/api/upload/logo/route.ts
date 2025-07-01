@@ -23,12 +23,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadLog
     const file = formData.get('file') as File
     const entityType = formData.get('entityType') as string
     const entityId = formData.get('entityId') as string
+    const source = formData.get('source') as string // iPhone маркер
+    
+    // ✅ ДЕТЕКЦИЯ iPhone запросов
+    const isiPhoneRequest = source === 'iPhone' || 
+                           request.headers.get('X-Device-Type') === 'iPhone'
     
     console.log('[Upload Logo] 📤 Получен запрос:', {
       fileName: file?.name,
       fileSize: file?.size,
       entityType,
-      entityId
+      entityId,
+      source: isiPhoneRequest ? '📱 iPhone' : '💻 Другое устройство'
     })
 
     // ✅ ВАЛИДАЦИЯ входных данных
@@ -61,11 +67,12 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadLog
       }, { status: 400 })
     }
 
-    // ✅ ВАЛИДАЦИЯ размера файла
-    if (file.size > MAX_FILE_SIZE) {
+    // ✅ ВАЛИДАЦИЯ размера файла (разные лимиты для iPhone)
+    const maxSize = isiPhoneRequest ? 3 * 1024 * 1024 : MAX_FILE_SIZE // 3MB для iPhone, 5MB для остальных
+    if (file.size > maxSize) {
       return NextResponse.json({
         success: false,
-        error: `Размер файла не должен превышать ${MAX_FILE_SIZE / 1024 / 1024}MB`
+        error: `Размер файла не должен превышать ${maxSize / 1024 / 1024}MB`
       }, { status: 400 })
     }
 
@@ -119,7 +126,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadLog
     console.log('[Upload Logo] ✅ Успешно загружен:', {
       path: safePath,
       size: file.size,
-      type: file.type
+      type: file.type,
+      device: isiPhoneRequest ? 'iPhone' : 'Other'
     })
 
     // ✅ ВОЗВРАТ успешного результата
