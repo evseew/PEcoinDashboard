@@ -119,7 +119,7 @@ class HybridApiClient {
   }
 
   async mintSingle(data: any) {
-    return this.request('/api/mint/single', { 
+    return this.request('/mint/single', { 
       method: 'POST', 
       body: JSON.stringify(data) 
     }, API_ROUTING.mintSingle)
