@@ -170,112 +170,127 @@ function TransactionCard({
   return (
     <motion.div
       className={`
-        relative p-5 mb-4 rounded-xl border-2 transition-all duration-300 group cursor-pointer
+        relative p-3 mb-3 rounded-lg border transition-all duration-300 group cursor-pointer
         ${isTeam 
-          ? 'bg-gradient-to-r from-white to-red-50/30 dark:from-gray-800 dark:to-red-900/10 border-red-100 dark:border-red-800/20 hover:border-red-200 dark:hover:border-red-700/40 hover:shadow-lg hover:shadow-red-100/50 dark:hover:shadow-red-900/20' 
-          : 'bg-gradient-to-r from-white to-blue-50/30 dark:from-gray-800 dark:to-blue-900/10 border-blue-100 dark:border-blue-800/20 hover:border-blue-200 dark:hover:border-blue-700/40 hover:shadow-lg hover:shadow-blue-100/50 dark:hover:shadow-blue-900/20'
+          ? 'bg-gradient-to-r from-white to-red-50/30 dark:from-gray-800 dark:to-red-900/10 border-red-100 dark:border-red-800/20 hover:border-red-200 dark:hover:border-red-700/40 hover:shadow-md' 
+          : 'bg-gradient-to-r from-white to-blue-50/30 dark:from-gray-800 dark:to-blue-900/10 border-blue-100 dark:border-blue-800/20 hover:border-blue-200 dark:hover:border-blue-700/40 hover:shadow-md'
         }
-        hover:scale-[1.02] active:scale-[0.99]
+        hover:scale-[1.01] active:scale-[0.99]
       `}
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      {/* Верхняя строка: Иконка, Сумма и Время */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
-          {/* Иконка с индикатором */}
-          <div className="relative">
+      {/* АДАПТИВНЫЙ ДИЗАЙН: Одна строка на десктопе, две на мобильном */}
+      <div className="md:flex md:items-center md:justify-between md:gap-4">
+        
+        {/* Левая часть: Иконка, Сумма и Участник */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          
+          {/* Компактная иконка с индикатором */}
+          <div className="relative flex-shrink-0">
             {(transaction.type === "Token" || transaction.type === "PEcoin") ? (
               <>
                 <img 
                   src={pecoinImg} 
                   alt="PEcoin" 
-                  className="w-12 h-12 rounded-full shadow-md ring-2 ring-white dark:ring-gray-700"
+                  className="w-8 h-8 rounded-full shadow-sm"
                 />
-                {/* Индикатор направления */}
-                <div className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm ${isReceived ? 'bg-gradient-to-br from-green-400 to-green-600' : 'bg-gradient-to-br from-red-400 to-red-600'}`}>
+                {/* Маленький индикатор направления */}
+                <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center text-white text-xs font-bold ${isReceived ? 'bg-green-500' : 'bg-red-500'}`}>
                   {isReceived ? '↓' : '↑'}
                 </div>
               </>
             ) : (
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center shadow-md ring-2 ring-white dark:ring-gray-700">
-                <span className="text-white text-sm font-bold">NFT</span>
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center shadow-sm">
+                <span className="text-white text-xs font-bold">NFT</span>
               </div>
             )}
           </div>
           
-          {/* Сумма и тип */}
-          <div className="flex flex-col">
+          {/* Сумма */}
+          <div className="flex-shrink-0">
             {(transaction.type === "Token" || transaction.type === "PEcoin") ? (
-              <span className={`font-bold text-2xl leading-tight ${isReceived ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              <span className={`font-bold text-lg ${isReceived ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 {isReceived ? '+' : '-'}{Math.abs(amount)} PE
               </span>
             ) : (
-              <span className="font-bold text-xl text-purple-600 dark:text-purple-400 leading-tight">
-                {transaction.nftName || 'NFT Transaction'}
+              <span className="font-bold text-lg text-purple-600 dark:text-purple-400">
+                {transaction.nftName || 'NFT'}
               </span>
             )}
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-              {(transaction.type === "Token" || transaction.type === "PEcoin") ? 
-                (isReceived ? "Получено" : "Отправлено") : 
-                (transaction.type === "NFT_MINT" ? "Создано" : transaction.type === "NFT_BURN" ? "Сожжено" : "Передано")
-              }
+          </div>
+          
+          {/* Участник - на десктопе в той же строке, на мобильном ниже */}
+          <div className="hidden md:flex md:items-center md:gap-2 flex-1 min-w-0">
+            <span className={`text-sm ${isTeam ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+              {(transaction.type === "Token" || transaction.type === "PEcoin") ? (
+                isReceived ? "от" : "→"
+              ) : (
+                transaction.action === "received" ? "от" : "→"
+              )}
             </span>
-          </div>
-        </div>
-        
-        {/* Время - более выразительное */}
-        <div className="text-right">
-          <div className={`text-sm font-semibold ${isTeam ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
-            {formatTime(transaction.date)}
-          </div>
-        </div>
-      </div>
-      
-      {/* Нижняя строка: Участник - распределяем по всей ширине */}
-      <div className="flex items-center justify-between bg-gray-50/50 dark:bg-gray-700/30 rounded-lg p-3">
-        <div className="flex items-center gap-2">
-          <span className={`text-sm font-medium ${isTeam ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
-            {(transaction.type === "Token" || transaction.type === "PEcoin") ? (
-              isReceived ? "от" : "кому"
-            ) : (
-              transaction.action === "received" ? "от" : "кому"
+            <ParticipantDisplay 
+              name={isReceived 
+                ? (transaction.senderName || transaction.sender) 
+                : (transaction.receiverName || transaction.receiver)
+              } 
+              info={isReceived ? transaction.senderInfo : transaction.receiverInfo} 
+              isTeam={isTeam} 
+            />
+            
+            {/* Memo комментарий на десктопе - в той же строке */}
+            {transaction.memo && (
+              <div className="ml-3 flex items-center gap-2">
+                <span className="text-sm">💬</span>
+                <span className="text-gray-600 dark:text-gray-400 text-sm italic truncate">
+                  "{transaction.memo}"
+                </span>
+              </div>
             )}
-          </span>
-          <ParticipantDisplay 
-            name={isReceived 
-              ? (transaction.senderName || transaction.sender) 
-              : (transaction.receiverName || transaction.receiver)
-            } 
-            info={isReceived ? transaction.senderInfo : transaction.receiverInfo} 
-            isTeam={isTeam} 
-          />
+          </div>
         </div>
         
-        {/* Дополнительная информация справа */}
-        <div className="text-xs text-gray-400 dark:text-gray-500">
-          ID: {transaction.signature.slice(0, 8)}...
+        {/* Время справа */}
+        <div className={`text-sm font-medium flex-shrink-0 ${isTeam ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'} 
+          md:ml-4 mt-2 md:mt-0 self-start md:self-center text-right`}>
+          {formatTime(transaction.date)}
         </div>
       </div>
       
-      {/* Memo комментарий - полная ширина с красивым дизайном */}
+      {/* Участник на мобильном - отдельная строка */}
+      <div className="md:hidden flex items-center gap-2 ml-11 mt-2">
+        <span className={`text-sm ${isTeam ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+          {(transaction.type === "Token" || transaction.type === "PEcoin") ? (
+            isReceived ? "от" : "→"
+          ) : (
+            transaction.action === "received" ? "от" : "→"
+          )}
+        </span>
+        <ParticipantDisplay 
+          name={isReceived 
+            ? (transaction.senderName || transaction.sender) 
+            : (transaction.receiverName || transaction.receiver)
+          } 
+          info={isReceived ? transaction.senderInfo : transaction.receiverInfo} 
+          isTeam={isTeam} 
+        />
+      </div>
+      
+      {/* Memo комментарий на мобильном - отдельный блок */}
       {transaction.memo && (
         <div className={`
-          mt-4 p-4 rounded-lg border-l-4
+          md:hidden mt-3 p-2 rounded border-l-2 ml-11
           ${isTeam 
-            ? 'bg-red-50/50 dark:bg-red-900/10 border-l-red-400 dark:border-l-red-500' 
-            : 'bg-blue-50/50 dark:bg-blue-900/10 border-l-blue-400 dark:border-l-blue-500'
+            ? 'bg-red-50/50 dark:bg-red-900/10 border-l-red-400' 
+            : 'bg-blue-50/50 dark:bg-blue-900/10 border-l-blue-400'
           }
         `}>
-          <div className="flex items-start gap-3">
-            <span className="text-xl flex-shrink-0 mt-0.5">💬</span>
-            <div className="flex-1">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Комментарий</span>
-              <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed mt-1 font-medium">
-                "{transaction.memo}"
-              </p>
-            </div>
+          <div className="flex items-start gap-2">
+            <span className="text-sm">💬</span>
+            <span className="text-gray-700 dark:text-gray-300 text-sm">
+              "{transaction.memo}"
+            </span>
           </div>
         </div>
       )}

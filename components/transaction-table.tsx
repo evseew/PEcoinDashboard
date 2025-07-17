@@ -3,7 +3,6 @@
 import { motion } from "framer-motion"
 import { CampIcon } from "@/components/camp-icons"
 import { useTokenImageUrl } from "@/hooks/token-image-provider"
-import { useMobile } from "@/hooks/use-mobile"
 import { MobileTransactionList } from "@/components/mobile-transaction-list"
 import { Users, Rocket, UserCog } from "lucide-react"
 
@@ -49,15 +48,8 @@ function ParticipantDisplay({
 }
 
 export function TransactionTable({ transactions, entityType = "teams" }: TransactionTableProps) {
-  const isMobile = useMobile()
-  
-  // ✅ ВРЕМЕННО: Всегда показываем новую версию для тестирования
+  // ✅ НОВЫЙ ДИЗАЙН ВЕЗДЕ: Компактные карточки для всех устройств
   return <MobileTransactionList transactions={transactions} entityType={entityType} />
-  
-  // ✅ АДАПТИВНЫЙ ДИЗАЙН: Мобильная версия (закомментировано для тестирования)
-  // if (isMobile) {
-  //   return <MobileTransactionList transactions={transactions} entityType={entityType} />
-  // }
 
   // ✅ ДЕСКТОПНАЯ ВЕРСИЯ: Существующая таблица
   const isTeam = entityType === "teams"
