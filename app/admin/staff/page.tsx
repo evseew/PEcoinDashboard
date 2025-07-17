@@ -15,6 +15,7 @@ interface Staff {
   description?: string
   balance?: number
   nftCount?: number
+  solBalance?: number
   [key: string]: unknown
 }
 
@@ -23,9 +24,11 @@ export default function StaffPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [balancesLoading, setBalancesLoading] = useState(false)
   const [nftCountsLoading, setNftCountsLoading] = useState(false)
+  const [solBalancesLoading, setSolBalancesLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [balances, setBalances] = useState<Record<string, number>>({})
   const [nftCounts, setNftCounts] = useState<Record<string, number>>({})
+  const [solBalances, setSolBalances] = useState<Record<string, number>>({})
 
   // PEcoin mint address
   const pecoinMint = "FDT9EMUytSwaP8GKiKdyv59rRAsT7gAB57wHUPm7wY9r"
@@ -147,17 +150,57 @@ export default function StaffPage() {
     }
   }
 
+  // ✅ BATCH-загрузка SOL балансов всех участников состава одним запросом
+  const fetchAllSolBalances = async (staffList: Staff[]) => {
+    if (staffList.length === 0) return
+
+    console.log('[Staff Page] ⚡ Загружаю SOL балансы для всех участников состава...')
+    setSolBalancesLoading(true)
+    
+    try {
+      // Собираем все уникальные адреса кошельков
+      const wallets = staffList
+        .filter(person => person.walletAddress)
+        .map(person => person.walletAddress)
+      
+      if (wallets.length === 0) {
+        setSolBalancesLoading(false)
+        return
+      }
+      
+      // ОДИН запрос для всех SOL балансов
+      const response = await fetch('/api/solana-balances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wallets }),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setSolBalances(data.balances || {})
+        console.log(`[Staff Page] ✅ Загружено ${Object.keys(data.balances || {}).length} SOL балансов`)
+      } else {
+        console.error('[Staff Page] ❌ Ошибка загрузки SOL балансов:', response.status)
+      }
+    } catch (error) {
+      console.error('[Staff Page] ❌ Ошибка получения SOL балансов:', error)
+    } finally {
+      setSolBalancesLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchStaff()
   }, [])
 
-  // Загружаем балансы и NFT counts после загрузки участников состава
+  // Загружаем балансы, NFT counts и SOL балансы после загрузки участников состава
   useEffect(() => {
     if (staff.length > 0) {
-      // ✅ PARALLEL: Загружаем балансы и NFT counts параллельно!
+      // ✅ PARALLEL: Загружаем балансы, NFT counts и SOL балансы параллельно!
       Promise.all([
         fetchAllBalances(staff),
-        fetchAllNFTCounts(staff)
+        fetchAllNFTCounts(staff),
+        fetchAllSolBalances(staff)
       ])
     }
   }, [staff])
@@ -265,11 +308,12 @@ export default function StaffPage() {
     fetchStaff()
   }
 
-  // ✅ Обогащаем данные участников состава балансами И NFT counts
+  // ✅ Обогащаем данные участников состава балансами, NFT counts и SOL балансами
   const enrichedStaff = staff.map(person => ({
     ...person,
     balance: balances[person.walletAddress] || 0,
-    nftCount: nftCounts[person.walletAddress] || 0  // ✅ Добавляем NFT count
+    nftCount: nftCounts[person.walletAddress] || 0,
+    solBalance: solBalances[person.walletAddress] || 0  // ✅ Добавляем SOL баланс
   }))
 
   return (
@@ -277,7 +321,7 @@ export default function StaffPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-display font-bold">Manage Staff</h1>
-          {/* ✅ Показываем загрузку для балансов И NFT counts */}
+          {/* ✅ Показываем загрузку для балансов, NFT counts и SOL балансов */}
           <div className="flex items-center space-x-4">
             {balancesLoading && (
               <div className="flex items-center text-sm text-gray-500">
@@ -289,6 +333,12 @@ export default function StaffPage() {
               <div className="flex items-center text-sm text-gray-500">
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-500 mr-2"></div>
                 <span>NFT остатки загружаются...</span>
+              </div>
+            )}
+            {solBalancesLoading && (
+              <div className="flex items-center text-sm text-gray-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2"></div>
+                <span>SOL балансы загружаются...</span>
               </div>
             )}
           </div>
@@ -303,14 +353,19 @@ export default function StaffPage() {
           onDeleteEntity={handleDeleteStaff}
           extraColumns={[
             {
-              key: "description",
-              label: "Description",
+              key: "solBalance",
+              label: "SOL Balance",
             },
             {
               key: "nftCount",
               label: "NFT",
             },
+            {
+              key: "walletAddress",
+              label: "Wallet Address",
+            },
           ]}
+          showDescription={true}
           showBalance={true}
           isLoading={isLoading}
         />

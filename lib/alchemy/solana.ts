@@ -432,3 +432,121 @@ export async function getMultipleTokenBalances(
     return results
   }
 } 
+
+/**
+ * ✅ НОВАЯ ФУНКЦИЯ: Batch получение нативных SOL балансов
+ * Оптимизированная версия для получения SOL (не токенов) всех кошельков
+ */
+export async function getMultipleSolanaBalances(
+  wallets: string[],
+  apiKey: string
+): Promise<Map<string, number>> {
+  const startTime = Date.now()
+  const results = new Map<string, number>()
+  
+  if (wallets.length === 0) {
+    return results
+  }
+  
+  console.log(`[Solana Batch] 🚀 Batch загрузка ${wallets.length} SOL балансов`)
+  
+  try {
+    // Разбиваем на chunks по 50 кошельков для оптимальной производительности
+    const chunks: string[][] = []
+    for (let i = 0; i < wallets.length; i += 50) {
+      chunks.push(wallets.slice(i, i + 50))
+    }
+    
+    console.log(`[Solana Batch] 📦 Разбито на ${chunks.length} чанков по ≤50 кошельков`)
+    
+    // Делаем batch запросы getBalance для каждого чанка
+    const url = `https://solana-mainnet.g.alchemy.com/v2/${apiKey}`
+    
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      const chunk = chunks[chunkIndex]
+      const chunkStart = Date.now()
+      
+      try {
+        console.log(`[Solana Batch] ⚡ Запрос чанка ${chunkIndex + 1}/${chunks.length} (${chunk.length} кошельков)`)
+        
+        // Создаем множественные getBalance запросы в одном batch
+        const batchRequests = chunk.map((wallet, index) => ({
+          jsonrpc: '2.0',
+          id: chunkIndex * 50 + index + 1,
+          method: 'getBalance',
+          params: [
+            wallet,
+            {
+              commitment: 'confirmed' // confirmed быстрее чем finalized
+            }
+          ]
+        }))
+        
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 7000)
+        
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(batchRequests),
+          signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+        
+        const data = await response.json()
+        const chunkTime = Date.now() - chunkStart
+        
+        // Обрабатываем batch ответы
+        const responses = Array.isArray(data) ? data : [data]
+        
+        for (let i = 0; i < chunk.length; i++) {
+          const wallet = chunk[i]
+          const responseData = responses[i]
+          
+          if (responseData?.error) {
+            console.error(`[Solana Batch] ❌ Ошибка для ${wallet.slice(0,8)}...:`, responseData.error)
+            results.set(wallet, 0)
+          } else if (responseData?.result !== undefined) {
+            // Конвертируем lamports в SOL (1 SOL = 1,000,000,000 lamports)
+            const lamports = responseData.result.value || 0
+            const solBalance = lamports / 1_000_000_000
+            console.log(`[Solana Batch] 💰 ${wallet.slice(0,8)}... -> ${solBalance.toFixed(4)} SOL`)
+            results.set(wallet, solBalance)
+          } else {
+            console.warn(`[Solana Batch] ⚠️ Неожиданный ответ для ${wallet.slice(0,8)}...:`, responseData)
+            results.set(wallet, 0)
+          }
+        }
+        
+        console.log(`[Solana Batch] ✅ Чанк ${chunkIndex + 1}/${chunks.length} обработан за ${chunkTime}ms`)
+        
+      } catch (error) {
+        const chunkTime = Date.now() - chunkStart
+        console.error(`[Solana Batch] ❌ Ошибка чанка ${chunkIndex + 1} за ${chunkTime}ms:`, error)
+        
+        // Устанавливаем 0 для всех кошельков в этом чанке
+        for (const wallet of chunk) {
+          results.set(wallet, 0)
+        }
+      }
+    }
+    
+    const totalTime = Date.now() - startTime
+    console.log(`[Solana Batch] 🎉 ЗАВЕРШЕНО: ${results.size}/${wallets.length} SOL балансов за ${totalTime}ms`)
+    
+    return results
+    
+  } catch (error) {
+    const totalTime = Date.now() - startTime
+    console.error(`[Solana Batch] ❌ Критическая ошибка за ${totalTime}ms:`, error)
+    
+    // Fallback: устанавливаем 0 для всех кошельков
+    wallets.forEach(wallet => results.set(wallet, 0))
+    return results
+  }
+} 

@@ -16,6 +16,7 @@ interface EntityTableRowProps {
   }
   extraColumns: { key: string; label: string }[]
   showBalance?: boolean
+  showDescription?: boolean
   onEdit: (entity: EntityTableRowProps['entity']) => void
   onDelete: (entity: EntityTableRowProps['entity']) => void
 }
@@ -24,6 +25,7 @@ export function EntityTableRow({
   entity, 
   extraColumns, 
   showBalance = true, 
+  showDescription = false,
   onEdit, 
   onDelete 
 }: EntityTableRowProps) {
@@ -83,9 +85,11 @@ export function EntityTableRow({
           <div className="font-medium">{entity.name}</div>
         </div>
       </td>
-      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-        {entity.walletAddress.slice(0, 6)}...{entity.walletAddress.slice(-4)}
-      </td>
+      {showDescription && (
+        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+          {String(entity.description || "")}
+        </td>
+      )}
       {showBalance && (
         <td className="px-4 py-3 whitespace-nowrap">
           <div className="flex items-center">
@@ -114,6 +118,21 @@ export function EntityTableRow({
                   {finalNFTCount}
                 </span>
               </div>
+            )
+            : column.key === 'solBalance'
+            ? (
+              <div className="flex items-center">
+                <span className="text-blue-500 mr-1">◎</span>
+                <span>
+                  {Number(entity[column.key] || 0).toFixed(4)}
+                </span>
+              </div>
+            )
+            : column.key === 'walletAddress'
+            ? (
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {entity.walletAddress.slice(0, 6)}...{entity.walletAddress.slice(-4)}
+              </span>
             )
             : column.key === 'achievements' 
             ? String(entity[column.key] || 0)

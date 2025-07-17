@@ -30,6 +30,7 @@ interface EntityTableProps {
   }[]
   isLoading?: boolean
   showBalance?: boolean
+  showDescription?: boolean
 }
 
 export function EntityTable({
@@ -42,6 +43,7 @@ export function EntityTable({
   extraColumns = [],
   isLoading = false,
   showBalance = false,
+  showDescription = false,
 }: EntityTableProps) {
   const [sortField, setSortField] = useState<string>("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
@@ -136,9 +138,11 @@ export function EntityTable({
                     />
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Wallet Address
-                </th>
+                {showDescription && (
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Description
+                  </th>
+                )}
                 {showBalance && (
                   <th
                     className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
@@ -208,6 +212,7 @@ export function EntityTable({
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     showBalance={showBalance}
+                    showDescription={showDescription}
                     extraColumns={extraColumns}
                   />
                 ))
