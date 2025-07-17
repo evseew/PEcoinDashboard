@@ -46,52 +46,38 @@ function getSolanaConnection(): Connection {
  */
 function extractMemoFromTransaction(tx: any): string | undefined {
   try {
-    if (!tx.transaction?.message?.instructions) {
-      return undefined;
-    }
-
-    const accountKeys = tx.transaction.message.accountKeys;
-    
-    // Ищем SPL Memo инструкции
-    for (const instruction of tx.transaction.message.instructions) {
-      const programId = accountKeys[instruction.programIdIndex]?.toBase58();
-      
-      if (programId === SPL_MEMO_PROGRAM_ID && instruction.data) {
-        try {
-          // Декодируем memo данные из base58 в текст
-          const memoBuffer = Buffer.from(instruction.data, 'base64');
-          const memo = memoBuffer.toString('utf8');
-          return memo.trim();
-        } catch (error) {
-          console.warn(`[extractMemoFromTransaction] Ошибка декодирования memo: ${error}`);
-          continue;
+    // ✅ ПРАВИЛЬНЫЙ ПОДХОД: Ищем memo в логах программы
+    if (tx.meta?.logMessages) {
+      for (const log of tx.meta.logMessages) {
+        // Ищем лог формата: "Program log: Memo (len X): "текст""
+        const memoMatch = log.match(/Program log: Memo \(len \d+\): "(.+)"/);
+        if (memoMatch && memoMatch[1]) {
+          const memo = memoMatch[1].trim();
+          console.log(`[extractMemoFromTransaction] ✅ Memo найден в логах: "${memo}"`);
+          return memo;
         }
-      }
-    }
-
-    // Также проверяем inner instructions
-    if (tx.meta?.innerInstructions) {
-      for (const innerGroup of tx.meta.innerInstructions) {
-        for (const innerInstruction of innerGroup.instructions) {
-          const programId = accountKeys[innerInstruction.programIdIndex]?.toBase58();
-          
-          if (programId === SPL_MEMO_PROGRAM_ID && innerInstruction.data) {
-            try {
-              const memoBuffer = Buffer.from(innerInstruction.data, 'base64');
-              const memo = memoBuffer.toString('utf8');
-              return memo.trim();
-            } catch (error) {
-              console.warn(`[extractMemoFromTransaction] Ошибка декодирования inner memo: ${error}`);
-              continue;
-            }
-          }
+        
+        // Альтернативный формат без кавычек: "Program log: Memo (len X): текст"
+        const simpleMemoMatch = log.match(/Program log: Memo \(len \d+\): (.+)/);
+        if (simpleMemoMatch && simpleMemoMatch[1]) {
+          const memo = simpleMemoMatch[1].trim();
+          // Убираем кавычки если они есть в начале и конце
+          const cleanMemo = memo.replace(/^["']|["']$/g, '');
+          console.log(`[extractMemoFromTransaction] ✅ Memo найден в логах (простой формат): "${cleanMemo}"`);
+          return cleanMemo;
+        }
+        
+        // Дополнительный поиск более простого формата
+        if (log.includes('Program log:') && log.includes('Memo')) {
+          console.log(`[extractMemoFromTransaction] 🔍 Потенциальный memo лог: "${log}"`);
         }
       }
     }
     
+    console.log(`[extractMemoFromTransaction] ❌ Memo не найден в логах транзакции`);
     return undefined;
   } catch (error) {
-    console.warn(`[extractMemoFromTransaction] Общая ошибка: ${error}`);
+    console.warn(`[extractMemoFromTransaction] Ошибка поиска memo в логах: ${error}`);
     return undefined;
   }
 }
