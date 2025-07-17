@@ -181,13 +181,13 @@ function TransactionCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      {/* АДАПТИВНЫЙ ДИЗАЙН: Одна строка на десктопе, две на мобильном */}
-      <div className="md:flex md:items-center md:justify-between md:gap-4">
-        
-        {/* Левая часть: Иконка, Сумма и Участник */}
+      {/* АДАПТИВНЫЙ ДИЗАЙН: 1 строка на десктопе, 2 строки на мобильном */}
+      
+      {/* ДЕСКТОПНАЯ ВЕРСИЯ: Одна строка */}
+      <div className="hidden md:flex md:items-center md:justify-between md:gap-4">
+        {/* Левая часть: Иконка + Сумма + Участник + Комментарий */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          
-          {/* Компактная иконка с индикатором */}
+          {/* Иконка */}
           <div className="relative flex-shrink-0">
             {(transaction.type === "Token" || transaction.type === "PEcoin") ? (
               <>
@@ -196,7 +196,6 @@ function TransactionCard({
                   alt="PEcoin" 
                   className="w-8 h-8 rounded-full shadow-sm"
                 />
-                {/* Маленький индикатор направления */}
                 <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center text-white text-xs font-bold ${isReceived ? 'bg-green-500' : 'bg-red-500'}`}>
                   {isReceived ? '↓' : '↑'}
                 </div>
@@ -221,8 +220,8 @@ function TransactionCard({
             )}
           </div>
           
-          {/* Участник - на десктопе в той же строке, на мобильном ниже */}
-          <div className="hidden md:flex md:items-center md:gap-2 flex-1 min-w-0">
+          {/* Участник */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             <span className={`text-sm ${isTeam ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
               {(transaction.type === "Token" || transaction.type === "PEcoin") ? (
                 isReceived ? "от" : "→"
@@ -238,62 +237,104 @@ function TransactionCard({
               info={isReceived ? transaction.senderInfo : transaction.receiverInfo} 
               isTeam={isTeam} 
             />
-            
-            {/* Memo комментарий на десктопе - в той же строке */}
-            {transaction.memo && (
-              <div className="ml-3 flex items-center gap-2">
-                <span className="text-sm">💬</span>
-                <span className="text-gray-600 dark:text-gray-400 text-sm italic truncate">
-                  "{transaction.memo}"
-                </span>
-              </div>
-            )}
           </div>
+          
+          {/* Комментарий */}
+          {transaction.memo && (
+            <div className="flex items-center gap-2 flex-1 min-w-0 ml-3">
+              <span className="text-sm">💬</span>
+              <span className="text-gray-700 dark:text-gray-300 text-sm font-bold truncate">
+                «{transaction.memo}»
+              </span>
+            </div>
+          )}
         </div>
         
         {/* Время справа */}
-        <div className={`text-sm font-medium flex-shrink-0 ${isTeam ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'} 
-          md:ml-4 mt-2 md:mt-0 self-start md:self-center text-right`}>
+        <div className={`text-sm font-medium flex-shrink-0 ${isTeam ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
           {formatTime(transaction.date)}
         </div>
       </div>
-      
-      {/* Участник на мобильном - отдельная строка */}
-      <div className="md:hidden flex items-center gap-2 ml-11 mt-2">
-        <span className={`text-sm ${isTeam ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
-          {(transaction.type === "Token" || transaction.type === "PEcoin") ? (
-            isReceived ? "от" : "→"
-          ) : (
-            transaction.action === "received" ? "от" : "→"
-          )}
-        </span>
-        <ParticipantDisplay 
-          name={isReceived 
-            ? (transaction.senderName || transaction.sender) 
-            : (transaction.receiverName || transaction.receiver)
-          } 
-          info={isReceived ? transaction.senderInfo : transaction.receiverInfo} 
-          isTeam={isTeam} 
-        />
-      </div>
-      
-      {/* Memo комментарий на мобильном - отдельный блок */}
-      {transaction.memo && (
-        <div className={`
-          md:hidden mt-3 p-2 rounded border-l-2 ml-11
-          ${isTeam 
-            ? 'bg-red-50/50 dark:bg-red-900/10 border-l-red-400' 
-            : 'bg-blue-50/50 dark:bg-blue-900/10 border-l-blue-400'
-          }
-        `}>
-          <div className="flex items-start gap-2">
-            <span className="text-sm">💬</span>
-            <span className="text-gray-700 dark:text-gray-300 text-sm">
-              "{transaction.memo}"
+
+      {/* МОБИЛЬНАЯ ВЕРСИЯ: Две строки */}
+      <div className="md:hidden">
+        {/* Строка 1: Иконка + Сумма + Участник */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {/* Компактная иконка с индикатором */}
+            <div className="relative flex-shrink-0">
+              {(transaction.type === "Token" || transaction.type === "PEcoin") ? (
+                <>
+                  <img 
+                    src={pecoinImg} 
+                    alt="PEcoin" 
+                    className="w-8 h-8 rounded-full shadow-sm"
+                  />
+                  <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full flex items-center justify-center text-white text-xs font-bold ${isReceived ? 'bg-green-500' : 'bg-red-500'}`}>
+                    {isReceived ? '↓' : '↑'}
+                  </div>
+                </>
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center shadow-sm">
+                  <span className="text-white text-xs font-bold">NFT</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Сумма */}
+            {(transaction.type === "Token" || transaction.type === "PEcoin") ? (
+              <span className={`font-bold text-lg ${isReceived ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {isReceived ? '+' : '-'}{Math.abs(amount)} PE
+              </span>
+            ) : (
+              <span className="font-bold text-lg text-purple-600 dark:text-purple-400">
+                {transaction.nftName || 'NFT'}
+              </span>
+            )}
+          </div>
+          
+          {/* Участник */}
+          <div className="flex items-center gap-2">
+            <span className={`text-sm ${isTeam ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+              {(transaction.type === "Token" || transaction.type === "PEcoin") ? (
+                isReceived ? "от" : "→"
+              ) : (
+                transaction.action === "received" ? "от" : "→"
+              )}
             </span>
+            <ParticipantDisplay 
+              name={isReceived 
+                ? (transaction.senderName || transaction.sender) 
+                : (transaction.receiverName || transaction.receiver)
+              } 
+              info={isReceived ? transaction.senderInfo : transaction.receiverInfo} 
+              isTeam={isTeam} 
+            />
           </div>
         </div>
-      )}
+        
+        {/* Строка 2: Комментарий + Время */}
+        <div className="flex items-center justify-between mt-1 ml-11">
+          {/* Комментарий с кавычками-елочками */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {transaction.memo ? (
+              <>
+                <span className="text-sm">💬</span>
+                <span className="text-gray-700 dark:text-gray-300 text-sm font-bold truncate">
+                  «{transaction.memo}»
+                </span>
+              </>
+            ) : (
+              <span></span>
+            )}
+          </div>
+          
+          {/* Время */}
+          <div className={`text-sm font-medium ${isTeam ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}`}>
+            {formatTime(transaction.date)}
+          </div>
+        </div>
+      </div>
     </motion.div>
   )
 }
