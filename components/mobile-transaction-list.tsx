@@ -320,7 +320,7 @@ function TransactionCard({
             {transaction.memo ? (
               <>
                 <span className="text-sm">💬</span>
-                <span className="text-gray-700 dark:text-gray-300 text-sm font-bold truncate">
+                <span className="text-gray-700 dark:text-gray-300 text-sm font-bold line-clamp-2">
                   «{transaction.memo}»
                 </span>
               </>
